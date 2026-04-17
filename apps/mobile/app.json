@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Prompt Closet",
+    "slug": "prompt-closet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F0EA"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.promptcloset.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Prompt Closet needs camera access to photograph your clothing items.",
+        "NSPhotoLibraryUsageDescription": "Prompt Closet needs photo library access to select clothing photos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F5F0EA"
+      },
+      "package": "com.promptcloset.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Prompt Closet needs photo library access to select clothing photos."
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
+  }
+}
