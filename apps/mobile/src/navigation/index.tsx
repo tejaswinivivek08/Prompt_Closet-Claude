@@ -4,8 +4,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { ActivityIndicator, View, Text, StyleSheet } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 import SignInScreen from "@/screens/auth/SignInScreen";
 import SignUpScreen from "@/screens/auth/SignUpScreen";
+import OnboardingScreen from "@/screens/onboarding/OnboardingScreen";
 import ClosetScreen from "@/screens/wardrobe/ClosetScreen";
 import AddItemScreen from "@/screens/wardrobe/AddItemScreen";
 import ItemDetailScreen from "@/screens/wardrobe/ItemDetailScreen";
@@ -108,8 +110,10 @@ const RootStack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { session, loading } = useAuth();
+  const { hasCompletedOnboarding, isLoading: onboardingLoading } =
+    useOnboarding();
 
-  if (loading) {
+  if (loading || onboardingLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#C9847A" />
@@ -122,36 +126,40 @@ export default function RootNavigator() {
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {session && session.user ? (
-          <>
-            <RootStack.Screen name="MainTabs" component={MainTabs} />
-            <RootStack.Screen
-              name="ReviewTags"
-              component={ReviewTagsScreen}
-              options={{
-                presentation: "modal",
-                headerShown: true,
-                headerTitle: "Review Tags",
-                headerStyle: { backgroundColor: "#F5F0EA" },
-                headerTintColor: "#2C2C2C",
-              }}
-            />
-            <RootStack.Screen
-              name="ItemDetail"
-              component={ItemDetailScreen}
-              options={{
-                presentation: "fullScreenModal",
-                headerShown: false,
-              }}
-            />
-            <RootStack.Screen
-              name="MagicBar"
-              component={MagicBarScreen}
-              options={{
-                presentation: "modal",
-                headerShown: false,
-              }}
-            />
-          </>
+          hasCompletedOnboarding ? (
+            <>
+              <RootStack.Screen name="MainTabs" component={MainTabs} />
+              <RootStack.Screen
+                name="ReviewTags"
+                component={ReviewTagsScreen}
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  headerTitle: "Review Tags",
+                  headerStyle: { backgroundColor: "#F5F0EA" },
+                  headerTintColor: "#2C2C2C",
+                }}
+              />
+              <RootStack.Screen
+                name="ItemDetail"
+                component={ItemDetailScreen}
+                options={{
+                  presentation: "fullScreenModal",
+                  headerShown: false,
+                }}
+              />
+              <RootStack.Screen
+                name="MagicBar"
+                component={MagicBarScreen}
+                options={{
+                  presentation: "modal",
+                  headerShown: false,
+                }}
+              />
+            </>
+          ) : (
+            <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
+          )
         ) : (
           <RootStack.Screen name="Auth" component={AuthNavigator} />
         )}
