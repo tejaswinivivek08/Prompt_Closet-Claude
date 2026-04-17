@@ -8,9 +8,10 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase, deleteItem } from "@/lib/supabase";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -49,8 +50,10 @@ export default function ItemDetailScreen({
   route,
 }: ItemDetailScreenProps) {
   const { itemId, imageUrl } = route.params;
+  const { user } = useAuth();
   const [loading, setLoading] = React.useState(true);
   const [item, setItem] = React.useState<any>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   React.useEffect(() => {
     async function fetchItem() {
@@ -64,6 +67,28 @@ export default function ItemDetailScreen({
     }
     fetchItem();
   }, [itemId]);
+
+  const handleDelete = async () => {
+    if (!user) return;
+
+    Alert.alert("Delete this item?", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setDeleting(true);
+          const { error } = await deleteItem(itemId, user.id);
+          setDeleting(false);
+          if (error) {
+            Alert.alert("Failed to delete item", error.message);
+          } else {
+            navigation.goBack();
+          }
+        },
+      },
+    ]);
+  };
 
   if (loading) {
     return (
@@ -197,8 +222,33 @@ export default function ItemDetailScreen({
           {item.wear_count !== undefined && item.wear_count > 0 && (
             <Text style={styles.wornCount}>Worn {item.wear_count} times</Text>
           )}
+
+          <TouchableOpacity
+            style={styles.editTagsButton}
+            onPress={() => navigation.navigate("EditItem", { itemId: item.id })}
+          >
+            <Text style={styles.editTagsButtonText}>Edit Tags</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.deleteButtonText}>🗑️ Delete Item</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {deleting && (
+        <View style={styles.deletingOverlay}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
 
       {/* Back button overlay */}
       <TouchableOpacity
@@ -364,6 +414,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     marginTop: 8,
+  },
+  deleteButton: {
+    backgroundColor: "#E53935",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  editTagsButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 24,
+  },
+  editTagsButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  deleteButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  deletingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   closeButton: {
     position: "absolute",

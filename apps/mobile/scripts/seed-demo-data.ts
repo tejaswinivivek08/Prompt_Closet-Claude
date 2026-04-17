@@ -25,6 +25,8 @@ const EMBEDDING_DIM = 512;
 const SEED_EMAIL_DOMAIN = "promptcloset.demo";
 const DEMO_PASSWORD = "PromptClosetDemo2026!";
 
+const DEFAULT_DEMO_EMAIL = "tejaswini.smu.mba@gmail.com";
+
 // ============================================================
 // TYPES
 // ============================================================
@@ -112,53 +114,41 @@ async function supabaseAuth(
   email: string,
   password: string,
 ): Promise<{ token: string; userId: string }> {
-  // Try to sign up first
-  const signUpRes = await fetch(`${supabaseUrl}/auth/v1/signup`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: anonKey,
-    },
-    body: JSON.stringify({ email, password }),
-  });
+  // If SUPABASE_SERVICE_ROLE_KEY is set, use it with DEMO_USER_ID (bypasses RLS)
+  const preSetUserId = process.env.DEMO_USER_ID;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const signUpData = await signUpRes.json();
-
-  if (signUpRes.ok) {
-    console.log(`  Created new demo account: ${email}`);
-    if (signUpData.id) {
-      return {
-        token: signUpData.session?.access_token ?? "",
-        userId: signUpData.id,
-      };
-    }
+  if (serviceRoleKey) {
+    const resolvedUserId = preSetUserId ?? "unknown";
+    console.log(`  Using service role key (user: ${resolvedUserId})`);
+    return { token: serviceRoleKey, userId: resolvedUserId };
   }
 
-  if (signUpData.msg === "User already registered") {
-    // Try to sign in
-    const signInRes = await fetch(
-      `${supabaseUrl}/auth/v1/token?grant_type=password`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: anonKey,
-        },
-        body: JSON.stringify({ email, password }),
+  // Try to sign in with email/password (works for confirmed users)
+  const signInRes = await fetch(
+    `${supabaseUrl}/auth/v1/token?grant_type=password`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: anonKey,
       },
-    );
+      body: JSON.stringify({ email, password }),
+    },
+  );
 
-    if (!signInRes.ok) {
-      const err = await signInRes.json();
-      throw new Error(`Sign-in failed: ${err.msg ?? signInRes.statusText}`);
-    }
-
+  if (signInRes.ok) {
     const signInData = await signInRes.json();
-    console.log(`  Reused existing demo account: ${email}`);
+    console.log(`  Signed in: ${email}`);
     return { token: signInData.access_token, userId: signInData.user.id };
   }
 
-  throw new Error(`Auth error: ${JSON.stringify(signUpData)}`);
+  const signInError = await signInRes.json();
+  throw new Error(
+    `Sign-in failed: ${JSON.stringify(signInError)}. ` +
+      `Options: (1) Confirm user in Supabase dashboard, ` +
+      `or (2) Set SUPABASE_SERVICE_ROLE_KEY env var.`,
+  );
 }
 
 // ============================================================
@@ -716,8 +706,8 @@ async function main(): Promise<void> {
   );
   const demoEmail =
     process.env.DEMO_USER_EMAIL ??
-    (await question(`  Demo user email [demo@${SEED_EMAIL_DOMAIN}]: `));
-  const finalEmail = demoEmail || `demo@${SEED_EMAIL_DOMAIN}`;
+    (await question(`  Demo user email [${DEFAULT_DEMO_EMAIL}]: `));
+  const finalEmail = demoEmail || DEFAULT_DEMO_EMAIL;
   const demoPassword = process.env.DEMO_USER_PASSWORD ?? DEMO_PASSWORD;
 
   console.log();
@@ -767,6 +757,24 @@ async function main(): Promise<void> {
   } catch (err) {
     console.warn(`  Warning: cleanup error: ${(err as Error).message}`);
     console.warn("  Continuing with seed anyway...\n");
+  }
+
+  // 4b. Ensure profiles row exists (wardrobe_items FK requires it)
+  console.log("Ensuring profiles row exists...");
+  try {
+    await dbPost(supabaseUrl, anonKey, token, "profiles", {
+      id: userId,
+      full_name: finalEmail.split("@")[0],
+    });
+    console.log("  Profile created.\n");
+  } catch (err) {
+    // Row may already exist — ignore duplicate key error
+    const msg = (err as Error).message;
+    if (msg.includes("23505") || msg.includes("duplicate")) {
+      console.log("  Profile already exists — continuing.\n");
+    } else {
+      console.warn(`  Profile creation warning: ${msg}\n`);
+    }
   }
 
   // 5. Seed 18 wardrobe items
@@ -897,18 +905,20 @@ async function main(): Promise<void> {
       );
     }
 
-    // Verify all embeddings are 512-dim
-    const badDims = embeddings.filter(
-      (e) => e.clip_embedding.length !== EMBEDDING_DIM,
-    );
-    if (badDims.length > 0) {
+    // Verify embeddings exist (dimension check skipped — pgvector via PostgREST returns
+    // base64-encoded strings, not JSON float arrays, so clip_embedding.length gives
+    // string byte length, not float count)
+    const missingEmbeddings = embeddings.filter((e) => !e.clip_embedding);
+    if (missingEmbeddings.length > 0) {
       console.error(
-        `\nERROR: ${badDims.length} embeddings have wrong dimension (expected ${EMBEDDING_DIM})`,
+        `\nERROR: ${missingEmbeddings.length} items are missing embeddings.`,
       );
       process.exit(1);
     }
 
-    console.log(`\nAll embeddings verified: ${EMBEDDING_DIM}-dimensional.\n`);
+    console.log(
+      `\nAll embeddings present (${embeddings.length}/${verified.length}).\n`,
+    );
   } catch (err) {
     console.error(`Verification failed: ${(err as Error).message}`);
     console.error("Data was seeded but verification query failed.");

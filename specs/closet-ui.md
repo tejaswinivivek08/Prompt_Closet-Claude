@@ -293,7 +293,7 @@ This means:
 
 - "warm cozy sweater" matches items tagged as sweaters + warm colors + knit textures
 - "something blue" matches navy, royal blue, teal items
-- "date night top" matches items with high formality (7+) + occasion:date
+- "date night top" matches items with high formality (4-5) + occasion:date
 - "rain-friendly" matches items with rain-resistant materials or covered footwear
 
 **Implementation**: Query text is embedded via CLIP → cosine similarity search against all item embeddings in pgvector → results sorted by relevance score.

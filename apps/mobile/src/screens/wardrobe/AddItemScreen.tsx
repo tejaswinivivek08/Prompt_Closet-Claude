@@ -12,6 +12,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNetwork } from "@/contexts/NetworkContext";
 import { uploadWardrobeImage, UploadError } from "@/services/storageService";
 import { analyzeClothingItem } from "@/services/taggingService";
 
@@ -32,6 +33,7 @@ type UploadStage =
 
 export default function AddItemScreen({ navigation }: AddItemScreenProps) {
   const { user } = useAuth();
+  const { isConnected } = useNetwork();
   const [modalVisible, setModalVisible] = useState(true); // Show modal on mount
   const [stage, setStage] = useState<UploadStage>("idle");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -205,6 +207,17 @@ export default function AddItemScreen({ navigation }: AddItemScreenProps) {
 
   return (
     <View style={styles.container}>
+      {/* Offline Banner */}
+      {!isConnected && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineBannerIcon}>📵</Text>
+          <Text style={styles.offlineBannerText}>
+            Photos can't be uploaded while offline. Please connect to the
+            internet and try again.
+          </Text>
+        </View>
+      )}
+
       {/* Choice Modal */}
       <Modal
         visible={modalVisible && stage === "idle"}
@@ -220,21 +233,41 @@ export default function AddItemScreen({ navigation }: AddItemScreenProps) {
             </Text>
 
             <TouchableOpacity
-              style={styles.modalOption}
+              style={[
+                styles.modalOption,
+                !isConnected && styles.modalOptionDisabled,
+              ]}
               onPress={launchCameraWithGuidance}
+              disabled={!isConnected}
             >
               <Text style={styles.modalOptionIcon}>📷</Text>
               <View>
-                <Text style={styles.modalOptionTitle}>Take Photo</Text>
-                <Text style={styles.modalOptionDesc}>
+                <Text
+                  style={[
+                    styles.modalOptionTitle,
+                    !isConnected && styles.modalOptionTextDisabled,
+                  ]}
+                >
+                  Take Photo
+                </Text>
+                <Text
+                  style={[
+                    styles.modalOptionDesc,
+                    !isConnected && styles.modalOptionTextDisabled,
+                  ]}
+                >
                   Use camera to photograph item
                 </Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.modalOption}
+              style={[
+                styles.modalOption,
+                !isConnected && styles.modalOptionDisabled,
+              ]}
               onPress={launchLibraryWithGuidance}
+              disabled={!isConnected}
             >
               <Text style={styles.modalOptionIcon}>🖼️</Text>
               <View>
@@ -333,6 +366,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F0EA",
   },
+  offlineBanner: {
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  offlineBannerIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  offlineBannerText: {
+    fontSize: 14,
+    color: "#2C2C2C",
+    fontWeight: "500",
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -368,6 +418,12 @@ const styles = StyleSheet.create({
     borderColor: "#E5DDD5",
     borderRadius: 12,
     marginBottom: 12,
+  },
+  modalOptionDisabled: {
+    opacity: 0.5,
+  },
+  modalOptionTextDisabled: {
+    color: "#A0978E",
   },
   modalOptionIcon: {
     fontSize: 28,

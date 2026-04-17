@@ -15,6 +15,7 @@ import {
   Dimensions,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNetwork } from "@/contexts/NetworkContext";
 import { supabase } from "@/lib/supabase";
 import { semanticSearch } from "@/services/embeddingService";
 import type { SearchResult } from "@/services/embeddingService";
@@ -254,6 +255,7 @@ function OutfitCard({ outfit, items, onSave, saving }: OutfitCardProps) {
 
 export default function MagicBarScreen({ navigation }: { navigation: any }) {
   const { user } = useAuth();
+  const { isConnected } = useNetwork();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<OutfitSuggestion[]>([]);
@@ -503,6 +505,16 @@ export default function MagicBarScreen({ navigation }: { navigation: any }) {
         {/* Large serif heading */}
         <Text style={styles.heading}>What do you want to wear?</Text>
 
+        {/* Offline Banner */}
+        {!isConnected && (
+          <View style={styles.offlineBanner}>
+            <Text style={styles.offlineBannerIcon}>📵</Text>
+            <Text style={styles.offlineBannerText}>
+              Magic Bar requires an internet connection to style your outfits.
+            </Text>
+          </View>
+        )}
+
         {/* Text input */}
         <View style={styles.inputSection}>
           <View style={styles.inputWrap}>
@@ -522,9 +534,12 @@ export default function MagicBarScreen({ navigation }: { navigation: any }) {
 
           {/* Style Me button */}
           <TouchableOpacity
-            style={[styles.styleButton, loading && styles.styleButtonDisabled]}
+            style={[
+              styles.styleButton,
+              (loading || !isConnected) && styles.styleButtonDisabled,
+            ]}
             onPress={handleSearch}
-            disabled={loading || !query.trim()}
+            disabled={loading || !query.trim() || !isConnected}
           >
             <Text style={styles.styleButtonText}>Style Me</Text>
           </TouchableOpacity>
@@ -599,6 +614,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  offlineBanner: {
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    borderRadius: 12,
+  },
+  offlineBannerIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  offlineBannerText: {
+    fontSize: 14,
+    color: "#2C2C2C",
+    fontWeight: "500",
+    flex: 1,
   },
   header: {
     flexDirection: "row",

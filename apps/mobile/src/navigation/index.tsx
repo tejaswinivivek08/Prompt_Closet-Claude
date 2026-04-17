@@ -9,10 +9,13 @@ import SignInScreen from "@/screens/auth/SignInScreen";
 import SignUpScreen from "@/screens/auth/SignUpScreen";
 import OnboardingScreen from "@/screens/onboarding/OnboardingScreen";
 import ClosetScreen from "@/screens/wardrobe/ClosetScreen";
+import StyleHistoryScreen from "@/screens/wardrobe/StyleHistoryScreen";
+import SearchScreen from "@/screens/wardrobe/SearchScreen";
 import AddItemScreen from "@/screens/wardrobe/AddItemScreen";
 import ItemDetailScreen from "@/screens/wardrobe/ItemDetailScreen";
 import MagicBarScreen from "@/screens/wardrobe/MagicBarScreen";
 import ReviewTagsScreen from "@/screens/wardrobe/ReviewTagsScreen";
+import EditItemScreen from "@/screens/wardrobe/EditItemScreen";
 
 // Auth stack
 const AuthStack = createNativeStackNavigator();
@@ -87,7 +90,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Search"
-        component={ClosetScreen} // Placeholder - replace with SearchScreen
+        component={SearchScreen}
         options={{
           title: "Search",
           tabBarLabel: "Search",
@@ -95,10 +98,10 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Profile"
-        component={ClosetScreen} // Placeholder - replace with ProfileScreen
+        component={StyleHistoryScreen}
         options={{
-          title: "Profile",
-          tabBarLabel: "Profile",
+          title: "Style History",
+          tabBarLabel: "Style",
         }}
       />
     </Tab.Navigator>
@@ -146,6 +149,17 @@ export default function RootNavigator() {
                 options={{
                   presentation: "fullScreenModal",
                   headerShown: false,
+                }}
+              />
+              <RootStack.Screen
+                name="EditItem"
+                component={EditItemScreen as any}
+                options={{
+                  presentation: "fullScreenModal",
+                  headerShown: true,
+                  headerTitle: "Edit Tags",
+                  headerStyle: { backgroundColor: "#F5F0EA" },
+                  headerTintColor: "#2C2C2C",
                 }}
               />
               <RootStack.Screen

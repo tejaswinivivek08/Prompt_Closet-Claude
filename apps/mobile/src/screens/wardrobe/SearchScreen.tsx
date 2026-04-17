@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,12 @@ import {
   Image,
   RefreshControl,
   TextInput,
-  ScrollView,
   ActivityIndicator,
   Dimensions,
   Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNetwork } from "@/contexts/NetworkContext";
 import { supabase, deleteItem } from "@/lib/supabase";
 import { semanticSearch } from "@/services/embeddingService";
 import type { SearchResult } from "@/services/embeddingService";
@@ -39,27 +37,6 @@ interface WardrobeItem {
   created_at: string;
 }
 
-type CategoryFilter =
-  | "All"
-  | "top"
-  | "bottom"
-  | "dress"
-  | "traditional"
-  | "outerwear"
-  | "footwear"
-  | "accessory";
-
-const CATEGORY_FILTERS: CategoryFilter[] = [
-  "All",
-  "top",
-  "bottom",
-  "dress",
-  "traditional",
-  "outerwear",
-  "footwear",
-  "accessory",
-];
-
 // ============================================================
 // DESIGN TOKENS
 // ============================================================
@@ -67,32 +44,31 @@ const CATEGORY_FILTERS: CategoryFilter[] = [
 const COLORS = {
   background: "#F5F0EA",
   card: "#FFFFFF",
-  cardShadow: "rgba(0,0,0,0.06)",
-  primary: "#C9847A", // rose gold
+  primary: "#C9847A",
   text: "#2C2C2C",
   textSecondary: "#7A6F68",
   border: "#E5DDD5",
   occasion: {
-    casual: "#7B9E87", // sage green
-    office: "#4A7B9D", // steel blue
-    festive: "#C9A96E", // gold
-    wedding: "#C9A96E", // gold
-    party: "#B5A0C9", // dusty lilac
-    temple: "#C9847A", // rose gold
+    casual: "#7B9E87",
+    office: "#4A7B9D",
+    festive: "#C9A96E",
+    wedding: "#C9A96E",
+    party: "#B5A0C9",
+    temple: "#C9847A",
     beach: "#5BA8C4",
     date: "#D4847C",
     sport: "#6B8E6B",
   } as Record<string, string>,
 };
 
-// ============================================================
-// HELPERS
-// ============================================================
-
 const CARD_GAP = 4;
 const NUM_COLUMNS = 3;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_WIDTH = (SCREEN_WIDTH - CARD_GAP * (NUM_COLUMNS + 1)) / NUM_COLUMNS;
+
+// ============================================================
+// HELPERS
+// ============================================================
 
 function getItemLayout(_: any, index: number) {
   const row = Math.floor(index / NUM_COLUMNS);
@@ -114,40 +90,6 @@ function getDisplayName(item: WardrobeItem): string {
     return `${color.charAt(0).toUpperCase() + color.slice(1)} ${item.subcategory.charAt(0).toUpperCase() + item.subcategory.slice(1)}`;
   }
   return `${item.colors[0] ?? ""} ${item.category}`.trim() || "Unnamed Item";
-}
-
-const PAGE_SIZE = 24;
-
-// ============================================================
-// SKELETON
-// ============================================================
-
-function SkeletonCard() {
-  return (
-    <View style={[styles.card, styles.cardSkeleton]}>
-      <View
-        style={[styles.cardSkeletonImage, { backgroundColor: "#E8E0D8" }]}
-      />
-      <View style={{ padding: 6 }}>
-        <View
-          style={{
-            height: 10,
-            backgroundColor: "#E8E0D8",
-            borderRadius: 4,
-            marginBottom: 4,
-          }}
-        />
-        <View
-          style={{
-            height: 8,
-            width: "60%",
-            backgroundColor: "#E8E0D8",
-            borderRadius: 4,
-          }}
-        />
-      </View>
-    </View>
-  );
 }
 
 // ============================================================
@@ -211,47 +153,6 @@ function ItemCard({ item, similarity, onPress, onLongPress }: ItemCardProps) {
 }
 
 // ============================================================
-// CATEGORY FILTER BAR
-// ============================================================
-
-interface FilterBarProps {
-  selected: CategoryFilter;
-  onSelect: (cat: CategoryFilter) => void;
-}
-
-function FilterBar({ selected, onSelect }: FilterBarProps) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.filterBar}
-    >
-      {CATEGORY_FILTERS.map((cat) => {
-        const isActive = cat === selected;
-        return (
-          <TouchableOpacity
-            key={cat}
-            style={[styles.filterPill, isActive && styles.filterPillActive]}
-            onPress={() => onSelect(cat)}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                isActive && styles.filterPillTextActive,
-              ]}
-            >
-              {cat === "All"
-                ? "All"
-                : cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-// ============================================================
 // SEARCH BAR
 // ============================================================
 
@@ -260,16 +161,9 @@ interface SearchBarProps {
   onChange: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
-  onAIButtonPress: () => void;
 }
 
-function SearchBar({
-  value,
-  onChange,
-  onSubmit,
-  loading,
-  onAIButtonPress,
-}: SearchBarProps) {
+function SearchBar({ value, onChange, onSubmit, loading }: SearchBarProps) {
   return (
     <View style={styles.searchContainer}>
       <View style={styles.searchInputWrap}>
@@ -278,7 +172,7 @@ function SearchBar({
           style={styles.searchInput}
           value={value}
           onChangeText={onChange}
-          placeholder="Find something to wear..."
+          placeholder="Describe what you're looking for..."
           placeholderTextColor="#A0978E"
           returnKeyType="search"
           onSubmitEditing={onSubmit}
@@ -292,9 +186,6 @@ function SearchBar({
           />
         )}
       </View>
-      <TouchableOpacity style={styles.aiButton} onPress={onAIButtonPress}>
-        <Text style={styles.aiButtonText}>✨ Ask AI Stylist</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -303,17 +194,17 @@ function SearchBar({
 // EMPTY STATE
 // ============================================================
 
-function EmptyState({ isSearching }: { isSearching: boolean }) {
+function EmptyState({ hasSearched }: { hasSearched: boolean }) {
   return (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>{isSearching ? "🔍" : "👗"}</Text>
+      <Text style={styles.emptyIcon}>{hasSearched ? "🔍" : "👗"}</Text>
       <Text style={styles.emptyTitle}>
-        {isSearching ? "No items found" : "Your closet is empty"}
+        {hasSearched ? "No items found" : "Search your closet"}
       </Text>
       <Text style={styles.emptySubtitle}>
-        {isSearching
-          ? "Try a different search or browse all items"
-          : "Tap + to add your first clothing item"}
+        {hasSearched
+          ? "Try a different description"
+          : "Search your closet by describing what you're looking for"}
       </Text>
     </View>
   );
@@ -323,89 +214,19 @@ function EmptyState({ isSearching }: { isSearching: boolean }) {
 // MAIN SCREEN
 // ============================================================
 
-interface ClosetScreenProps {
+interface SearchScreenProps {
   navigation: any;
 }
 
-export default function ClosetScreen({ navigation }: ClosetScreenProps) {
+export default function SearchScreen({ navigation }: SearchScreenProps) {
   const { user } = useAuth();
-  const { isConnected } = useNetwork();
 
-  const [items, setItems] = useState<WardrobeItem[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<CategoryFilter>("All");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-
-  // Fetch items from Supabase
-  const fetchItems = useCallback(
-    async (pageNum: number = 0, append = false) => {
-      if (!user) return;
-
-      const from = pageNum * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      const { data, error } = await supabase
-        .from("wardrobe_items")
-        .select(
-          "id, image_url, thumbnail_url, category, subcategory, colors, pattern, occasions, formality_score, suggested_name, wear_count, created_at",
-        )
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      if (error) {
-        console.error("[ClosetScreen] Fetch error:", error.message);
-        return;
-      }
-
-      const newItems = (data ?? []) as WardrobeItem[];
-
-      if (append) {
-        setItems((prev) => [...prev, ...newItems]);
-      } else {
-        setItems(newItems);
-      }
-
-      setHasMore(newItems.length === PAGE_SIZE);
-    },
-    [user],
-  );
-
-  // Initial load
-  useEffect(() => {
-    if (user) {
-      setLoading(true);
-      fetchItems(0, false).finally(() => setLoading(false));
-    }
-  }, [user, fetchItems]);
-
-  // Pull to refresh
-  const onRefresh = useCallback(async () => {
-    if (!user) return;
-    setRefreshing(true);
-    setPage(0);
-    setSearchResults(null);
-    setSearchQuery("");
-    await fetchItems(0, false);
-    setRefreshing(false);
-  }, [user, fetchItems]);
-
-  // Load more (pagination)
-  const onEndReached = useCallback(() => {
-    if (hasMore && !loading && !searchLoading && !searchResults) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchItems(nextPage, true);
-    }
-  }, [hasMore, loading, searchLoading, searchResults, page, fetchItems]);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Semantic search
   const handleSearch = useCallback(async () => {
@@ -413,11 +234,12 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
     if (!query || !user) return;
 
     setSearchLoading(true);
+    setHasSearched(true);
     try {
       const results = await semanticSearch(user.id, query, 20, 0.3);
       setSearchResults(results);
     } catch (err) {
-      console.error("[ClosetScreen] Search error:", err);
+      console.error("[SearchScreen] Search error:", err);
       Alert.alert("Search failed", "Please try again.");
     } finally {
       setSearchLoading(false);
@@ -427,27 +249,26 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
     setSearchResults(null);
+    setHasSearched(false);
   }, []);
 
-  // Filter items locally
-  const filteredItems = React.useMemo(() => {
-    if (selectedFilter === "All") return items;
-    return items.filter((item) => item.category === selectedFilter);
-  }, [items, selectedFilter]);
+  const handleQueryChange = useCallback(
+    (v: string) => {
+      setSearchQuery(v);
+      if (!v.trim()) handleClearSearch();
+    },
+    [handleClearSearch],
+  );
 
-  // Build list data
-  const listData = searchResults
-    ? filteredItems.filter((item) =>
-        searchResults.some((r) => r.item_id === item.id),
-      )
-    : filteredItems;
-
-  const isSearching = searchResults !== null || searchQuery.trim().length > 0;
+  // Build list data from search results
+  const listData = searchResults ?? [];
 
   const renderItem = useCallback(
-    ({ item, index }: { item: WardrobeItem; index: number }) => {
-      const searchResult = searchResults?.find((r) => r.item_id === item.id);
-      const displayName = getDisplayName(item);
+    ({ item, index }: { item: SearchResult; index: number }) => {
+      const wardrobeItem = item.item;
+      if (!wardrobeItem) return null;
+
+      const displayName = getDisplayName(wardrobeItem as WardrobeItem);
 
       const handleLongPress = () => {
         Alert.alert(`Delete ${displayName}?`, "This cannot be undone.", [
@@ -457,18 +278,14 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
             style: "destructive",
             onPress: async () => {
               if (!user) return;
-              const { error } = await deleteItem(item.id, user.id);
+              const { error } = await deleteItem(wardrobeItem.id, user.id);
               if (error) {
                 Alert.alert("Failed to delete item", error.message);
                 return;
               }
-              // Remove from local list
-              setItems((prev) => prev.filter((i) => i.id !== item.id));
-              if (searchResults) {
-                setSearchResults((prev) =>
-                  prev ? prev.filter((r) => r.item_id !== item.id) : null,
-                );
-              }
+              setSearchResults((prev) =>
+                prev ? prev.filter((r) => r.item_id !== wardrobeItem.id) : null,
+              );
             },
           },
         ]);
@@ -483,12 +300,12 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
           }}
         >
           <ItemCard
-            item={item}
-            similarity={searchResult?.similarity}
+            item={wardrobeItem as WardrobeItem}
+            similarity={item.similarity}
             onPress={() =>
               navigation.navigate("ItemDetail", {
-                itemId: item.id,
-                imageUrl: item.image_url,
+                itemId: wardrobeItem.id,
+                imageUrl: wardrobeItem.image_url,
               })
             }
             onLongPress={handleLongPress}
@@ -496,102 +313,57 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
         </View>
       );
     },
-    [searchResults, navigation, user],
-  );
-
-  const renderSkeleton = () => (
-    <View style={styles.skeletonGrid}>
-      {Array.from({ length: 9 }).map((_, i) => (
-        <View
-          key={i}
-          style={{
-            width: CARD_WIDTH,
-            marginLeft: i % NUM_COLUMNS === 0 ? CARD_GAP : CARD_GAP / 2,
-            marginRight: CARD_GAP / 2,
-          }}
-        >
-          <SkeletonCard />
-        </View>
-      ))}
-    </View>
+    [navigation, user],
   );
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>My Closet</Text>
+        <Text style={styles.title}>Search</Text>
       </View>
 
-      {/* Offline Banner */}
-      {!isConnected && (
-        <View style={styles.offlineBanner}>
-          <Text style={styles.offlineBannerIcon}>📵</Text>
-          <Text style={styles.offlineBannerText}>
-            You're offline. Showing cached data.
-          </Text>
-        </View>
-      )}
-
-      {/* Search + AI Button */}
+      {/* Search bar */}
       <SearchBar
         value={searchQuery}
-        onChange={(v) => {
-          setSearchQuery(v);
-          if (!v.trim()) handleClearSearch();
-        }}
+        onChange={handleQueryChange}
         onSubmit={handleSearch}
         loading={searchLoading}
-        onAIButtonPress={() => navigation.navigate("MagicBar")}
       />
 
-      {/* Category Filter */}
-      {!isSearching && (
-        <FilterBar selected={selectedFilter} onSelect={setSelectedFilter} />
-      )}
-
-      {/* Grid */}
-      {loading ? (
-        renderSkeleton()
+      {/* Results grid */}
+      {searchLoading ? (
+        <View style={styles.loadingGrid}>
+          {Array.from({ length: 9 }).map((_, i) => (
+            <View
+              key={i}
+              style={{
+                width: CARD_WIDTH,
+                marginLeft: i % NUM_COLUMNS === 0 ? CARD_GAP : CARD_GAP / 2,
+                marginRight: CARD_GAP / 2,
+              }}
+            >
+              <View style={styles.skeletonCard}>
+                <View style={styles.skeletonImage} />
+              </View>
+            </View>
+          ))}
+        </View>
       ) : listData.length === 0 ? (
-        <EmptyState isSearching={isSearching && !searchLoading} />
+        <EmptyState hasSearched={hasSearched && !searchLoading} />
       ) : (
         <FlatList
           data={listData}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.item_id}
           numColumns={NUM_COLUMNS}
           key={NUM_COLUMNS}
           getItemLayout={getItemLayout}
           contentContainerStyle={styles.gridContent}
           columnWrapperStyle={styles.gridRow}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.primary}
-            />
-          }
-          onEndReached={onEndReached}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            hasMore && !searchResults ? (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={COLORS.primary} />
-              </View>
-            ) : null
-          }
+          ListFooterComponent={<View style={{ height: 100 }} />}
         />
       )}
-
-      {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate("AddItem")}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -609,22 +381,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
-  },
-  offlineBanner: {
-    backgroundColor: "#FFF3E0",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  offlineBannerIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  offlineBannerText: {
-    fontSize: 14,
-    color: "#2C2C2C",
-    fontWeight: "500",
   },
   title: {
     fontSize: 28,
@@ -654,45 +410,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: COLORS.text,
-  },
-  aiButton: {
-    marginTop: 8,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  aiButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  filterBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-    flexDirection: "row",
-  },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: "#FFFFFF",
-    marginRight: 8,
-  },
-  filterPillActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  filterPillText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    fontWeight: "500",
-  },
-  filterPillTextActive: {
-    color: "#FFFFFF",
   },
   gridContent: {
     paddingHorizontal: CARD_GAP / 2,
@@ -770,18 +487,21 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
   },
-  skeletonGrid: {
+  loadingGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: CARD_GAP / 2,
   },
-  cardSkeleton: {
+  skeletonCard: {
+    width: CARD_WIDTH,
     aspectRatio: "4 / 5",
     borderRadius: 8,
     marginVertical: CARD_GAP / 2,
+    overflow: "hidden",
   },
-  cardSkeletonImage: {
+  skeletonImage: {
     flex: 1,
+    backgroundColor: "#E8E0D8",
     borderRadius: 8,
   },
   emptyState: {
@@ -807,31 +527,5 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 20,
-  },
-  fab: {
-    position: "absolute",
-    bottom: 24,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabIcon: {
-    fontSize: 32,
-    color: "#FFFFFF",
-    fontWeight: "300",
-    marginTop: -2,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: "center",
   },
 });
