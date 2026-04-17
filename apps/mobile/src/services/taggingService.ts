@@ -188,7 +188,7 @@ const MOCK_RESULTS: ClothingTags[] = [
   },
   {
     category: "dress",
-    subcategory: null,
+    subcategory: "",
     colors: ["coral", "pink"],
     pattern: "floral",
     fabric: "chiffon",
@@ -205,7 +205,7 @@ const MOCK_RESULTS: ClothingTags[] = [
     colors: ["black"],
     pattern: "solid",
     fabric: "wool",
-    occasions: ["office", "party", "formal"],
+    occasions: ["office", "party"],
     formality_score: 5,
     season: ["winter", "all-season"],
     suggested_name: "Black Wool Blend Formal Blazer",

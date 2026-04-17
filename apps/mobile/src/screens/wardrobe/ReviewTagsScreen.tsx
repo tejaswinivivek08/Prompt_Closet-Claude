@@ -135,8 +135,8 @@ export default function ReviewTagsScreen({
           pattern,
           occasions,
           formality_score: formalityScore,
-          season: tags.season ?? ["all-season"],
-          ai_tags: tags,
+          season: initialTags.season ?? ["all-season"],
+          ai_tags: initialTags,
         })
         .select()
         .single();
@@ -306,7 +306,7 @@ export default function ReviewTagsScreen({
                 styles.formalityStar,
                 formalityScore >= score && styles.formalityStarSelected,
               ]}
-              onPress={() => setFormalityScore(score)}
+              onPress={() => setFormalityScore(score as 1 | 2 | 3 | 4 | 5)}
             >
               <Text
                 style={[

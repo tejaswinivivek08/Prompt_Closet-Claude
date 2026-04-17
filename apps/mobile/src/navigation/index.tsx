@@ -131,7 +131,7 @@ export default function RootNavigator() {
               <RootStack.Screen name="MainTabs" component={MainTabs} />
               <RootStack.Screen
                 name="ReviewTags"
-                component={ReviewTagsScreen}
+                component={ReviewTagsScreen as any}
                 options={{
                   presentation: "modal",
                   headerShown: true,
@@ -142,7 +142,7 @@ export default function RootNavigator() {
               />
               <RootStack.Screen
                 name="ItemDetail"
-                component={ItemDetailScreen}
+                component={ItemDetailScreen as any}
                 options={{
                   presentation: "fullScreenModal",
                   headerShown: false,

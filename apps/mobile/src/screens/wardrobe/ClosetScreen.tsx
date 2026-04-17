@@ -325,7 +325,6 @@ interface ClosetScreenProps {
 
 export default function ClosetScreen({ navigation }: ClosetScreenProps) {
   const { user } = useAuth();
-  const navigation = useNavigation<any>();
 
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(

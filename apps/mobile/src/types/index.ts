@@ -1,13 +1,18 @@
-// Auth types
+// Auth types — mirrors @supabase/auth-js Session/User types
 export interface Session {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  expires_at: number;
+  token_type: string;
   user: User | null;
-  accessToken: string | null;
 }
 
 export interface User {
   id: string;
-  email: string;
+  email?: string;
   aud: string;
+  role: string;
   created_at: string;
 }
 
@@ -32,7 +37,10 @@ export type Pattern =
   | "floral"
   | "printed"
   | "embroidered"
-  | "checkered";
+  | "checkered"
+  | "paisley"
+  | "geometric"
+  | "abstract";
 
 export type Occasion =
   | "casual"
@@ -42,7 +50,8 @@ export type Occasion =
   | "wedding"
   | "temple"
   | "beach"
-  | "date";
+  | "date"
+  | "sport";
 
 export type Season = "all-season" | "summer" | "winter" | "monsoon";
 
