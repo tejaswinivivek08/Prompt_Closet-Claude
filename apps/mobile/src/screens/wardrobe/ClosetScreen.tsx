@@ -13,6 +13,7 @@ import {
   Dimensions,
   Alert,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { semanticSearch } from "@/services/embeddingService";
@@ -255,9 +256,16 @@ interface SearchBarProps {
   onChange: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
+  onAIButtonPress: () => void;
 }
 
-function SearchBar({ value, onChange, onSubmit, loading }: SearchBarProps) {
+function SearchBar({
+  value,
+  onChange,
+  onSubmit,
+  loading,
+  onAIButtonPress,
+}: SearchBarProps) {
   return (
     <View style={styles.searchContainer}>
       <View style={styles.searchInputWrap}>
@@ -280,12 +288,7 @@ function SearchBar({ value, onChange, onSubmit, loading }: SearchBarProps) {
           />
         )}
       </View>
-      <TouchableOpacity
-        style={styles.aiButton}
-        onPress={() => {
-          navigation.navigate("MagicBar");
-        }}
-      >
+      <TouchableOpacity style={styles.aiButton} onPress={onAIButtonPress}>
         <Text style={styles.aiButtonText}>✨ Ask AI Stylist</Text>
       </TouchableOpacity>
     </View>
@@ -322,6 +325,7 @@ interface ClosetScreenProps {
 
 export default function ClosetScreen({ navigation }: ClosetScreenProps) {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
 
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
@@ -406,7 +410,7 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
 
     setSearchLoading(true);
     try {
-      const results = await semanticSearch(user.id, query, 20, 0.2);
+      const results = await semanticSearch(user.id, query, 20, 0.3);
       setSearchResults(results);
     } catch (err) {
       console.error("[ClosetScreen] Search error:", err);
@@ -496,6 +500,7 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
         }}
         onSubmit={handleSearch}
         loading={searchLoading}
+        onAIButtonPress={() => navigation.navigate("MagicBar")}
       />
 
       {/* Category Filter */}
