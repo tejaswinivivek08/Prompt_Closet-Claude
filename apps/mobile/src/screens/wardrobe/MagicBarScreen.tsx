@@ -14,11 +14,11 @@ import {
   Easing,
   Dimensions,
 } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNetwork } from "@/contexts/NetworkContext";
-import { supabase } from "@/lib/supabase";
-import { semanticSearch } from "@/services/embeddingService";
-import type { SearchResult } from "@/services/embeddingService";
+import { useAuth } from "../../contexts/AuthContext";
+import { useNetwork } from "../../contexts/NetworkContext";
+import { supabase } from "../../../lib/supabase";
+import { semanticSearch } from "../../services/embeddingService";
+import type { SearchResult } from "../../services/embeddingService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 

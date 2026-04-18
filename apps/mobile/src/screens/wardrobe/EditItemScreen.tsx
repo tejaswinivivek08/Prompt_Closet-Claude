@@ -9,10 +9,10 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
-import type { ClothingCategory, Pattern, Occasion } from "@/types";
-import type { ClothingTags } from "@/services/taggingService";
+import { useAuth } from "../../contexts/AuthContext";
+import { supabase } from "../../../lib/supabase";
+import type { ClothingCategory, Pattern, Occasion } from "../../types";
+import type { ClothingTags } from "../../services/taggingService";
 
 interface EditItemScreenProps {
   navigation: any;

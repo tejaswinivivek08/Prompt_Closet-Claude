@@ -10,8 +10,8 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase, deleteItem } from "@/lib/supabase";
+import { useAuth } from "../../contexts/AuthContext";
+import { supabase, deleteItem } from "../../../lib/supabase";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
