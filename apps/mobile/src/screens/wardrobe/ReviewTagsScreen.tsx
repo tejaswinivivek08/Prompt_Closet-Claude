@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 import type { ClothingCategory, Pattern, Occasion } from "../../types";
 import type { ClothingTags } from "../../services/taggingService";
 

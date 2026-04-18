@@ -12,7 +12,7 @@ import {
   SectionList,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 // ============================================================
 // TYPES

@@ -11,10 +11,10 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNetwork } from "@/contexts/NetworkContext";
-import { uploadWardrobeImage, UploadError } from "@/services/storageService";
-import { analyzeClothingItem } from "@/services/taggingService";
+import { useAuth } from "../../contexts/AuthContext";
+import { useNetwork } from "../../contexts/NetworkContext";
+import { uploadWardrobeImage, UploadError } from "../../services/storageService";
+import { analyzeClothingItem } from "../../services/taggingService";
 
 interface AddItemScreenProps {
   navigation: any;

@@ -16,7 +16,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNetwork } from "../../contexts/NetworkContext";
-import { supabase, deleteItem } from "../../../lib/supabase";
+import { supabase, deleteItem } from "../../lib/supabase";
 import { semanticSearch } from "../../services/embeddingService";
 import type { SearchResult } from "../../services/embeddingService";
 
