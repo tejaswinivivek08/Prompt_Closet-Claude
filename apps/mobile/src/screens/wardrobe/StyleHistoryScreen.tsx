@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Dimensions,
   SectionList,
+  Pressable,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
@@ -369,6 +370,12 @@ export default function StyleHistoryScreen({
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Style History</Text>
+        <TouchableOpacity
+          style={styles.styleDnaButton}
+          onPress={() => navigation.navigate("StyleDNA")}
+        >
+          <Text style={styles.styleDnaButtonText}>Style DNA</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -422,6 +429,18 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.text,
     letterSpacing: -0.5,
+  },
+  styleDnaButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginTop: 4,
+  },
+  styleDnaButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
   },
   listContent: {
     paddingHorizontal: 16,

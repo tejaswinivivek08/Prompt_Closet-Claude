@@ -3,19 +3,20 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { ActivityIndicator, View, Text, StyleSheet } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import { useOnboarding } from "@/contexts/OnboardingContext";
-import SignInScreen from "@/screens/auth/SignInScreen";
-import SignUpScreen from "@/screens/auth/SignUpScreen";
-import OnboardingScreen from "@/screens/onboarding/OnboardingScreen";
-import ClosetScreen from "@/screens/wardrobe/ClosetScreen";
-import StyleHistoryScreen from "@/screens/wardrobe/StyleHistoryScreen";
-import SearchScreen from "@/screens/wardrobe/SearchScreen";
-import AddItemScreen from "@/screens/wardrobe/AddItemScreen";
-import ItemDetailScreen from "@/screens/wardrobe/ItemDetailScreen";
-import MagicBarScreen from "@/screens/wardrobe/MagicBarScreen";
-import ReviewTagsScreen from "@/screens/wardrobe/ReviewTagsScreen";
-import EditItemScreen from "@/screens/wardrobe/EditItemScreen";
+import { useAuth } from "../contexts/AuthContext";
+import { useOnboarding } from "../contexts/OnboardingContext";
+import SignInScreen from "../screens/auth/SignInScreen";
+import SignUpScreen from "../screens/auth/SignUpScreen";
+import OnboardingScreen from "../screens/onboarding/OnboardingScreen";
+import ClosetScreen from "../screens/wardrobe/ClosetScreen";
+import StyleHistoryScreen from "../screens/wardrobe/StyleHistoryScreen";
+import StyleDNAScreen from "../screens/wardrobe/StyleDNAScreen";
+import SearchScreen from "../screens/wardrobe/SearchScreen";
+import AddItemScreen from "../screens/wardrobe/AddItemScreen";
+import ItemDetailScreen from "../screens/wardrobe/ItemDetailScreen";
+import MagicBarScreen from "../screens/wardrobe/MagicBarScreen";
+import ReviewTagsScreen from "../screens/wardrobe/ReviewTagsScreen";
+import EditItemScreen from "../screens/wardrobe/EditItemScreen";
 
 // Auth stack
 const AuthStack = createNativeStackNavigator();
@@ -168,6 +169,17 @@ export default function RootNavigator() {
                 options={{
                   presentation: "modal",
                   headerShown: false,
+                }}
+              />
+              <RootStack.Screen
+                name="StyleDNA"
+                component={StyleDNAScreen}
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  headerTitle: "Style DNA",
+                  headerStyle: { backgroundColor: "#F5F0EA" },
+                  headerTintColor: "#2C2C2C",
                 }}
               />
             </>
