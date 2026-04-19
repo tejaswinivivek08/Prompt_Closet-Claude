@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,11 +6,23 @@ import {
   FlatList,
   TouchableOpacity,
 } from "react-native";
-import AddItemButton from "@/components/AddItemButton";
+import AddItemButton from "../../components/AddItemButton";
+import OOTDCard from "../../components/OOTDCard";
 
 export default function ClosetScreen({ navigation }: any) {
+  const [ootdKey, setOotdKey] = useState(0);
+
   const handleAddItem = () => {
     navigation.navigate("AddItem");
+  };
+
+  const handleWearThis = () => {
+    setOotdKey((k) => k + 1);
+    navigation.navigate("Style");
+  };
+
+  const handleShuffle = () => {
+    setOotdKey((k) => k + 1);
   };
 
   return (
@@ -20,6 +32,13 @@ export default function ClosetScreen({ navigation }: any) {
         numColumns={3}
         keyExtractor={() => "empty"}
         contentContainerStyle={styles.gridContent}
+        ListHeaderComponent={
+          <OOTDCard
+            key={ootdKey}
+            onWearThis={handleWearThis}
+            onShuffle={handleShuffle}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>👗</Text>
