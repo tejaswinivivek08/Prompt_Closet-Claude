@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.promptcloset.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Prompt Closet needs camera access to photograph your clothing items.",
-        "NSPhotoLibraryUsageDescription": "Prompt Closet needs photo library access to select clothing photos."
+        "NSPhotoLibraryUsageDescription": "Prompt Closet needs photo library access to select clothing photos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
