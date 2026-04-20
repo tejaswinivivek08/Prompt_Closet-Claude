@@ -5,9 +5,9 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
-import type { AuthError } from "@/types";
+import type { AuthError } from "../types";
 
 interface AuthContextType {
   session: Session | null;

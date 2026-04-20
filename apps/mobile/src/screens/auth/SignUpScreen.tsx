@@ -11,7 +11,7 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 const SKIN_TONE_OPTIONS = [
   { label: "Fair Cool", value: "fair-cool" },

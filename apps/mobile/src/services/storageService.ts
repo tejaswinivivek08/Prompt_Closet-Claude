@@ -5,7 +5,7 @@
  * Images are stored at: wardrobe-items/{user_id}/{uuid}.jpg
  */
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../lib/supabase";
 
 export class UploadError extends Error {
   code: string;

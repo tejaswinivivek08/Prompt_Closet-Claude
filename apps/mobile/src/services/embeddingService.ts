@@ -8,7 +8,7 @@
  * Embeddings enable cosine similarity search via pgvector in Supabase.
  */
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../lib/supabase";
 
 // ============================================================
 // TYPES

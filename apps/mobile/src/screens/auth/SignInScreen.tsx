@@ -12,7 +12,7 @@ import {
   Alert,
   Linking,
 } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function SignInScreen({ navigation }: any) {
   const { signIn, loading, error } = useAuth();
