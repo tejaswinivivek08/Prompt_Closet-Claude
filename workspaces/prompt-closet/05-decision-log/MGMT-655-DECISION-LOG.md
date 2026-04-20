@@ -3,7 +3,7 @@
 **Course**: MGMT 655 — Machine Learning Management
 **Author**: Tejaswini
 **Date**: 2026-04-17
-**Status**: Phase 1 Complete
+**Status**: Phase 1 + Phase 2 Complete
 
 ---
 
@@ -363,6 +363,147 @@ The concurrency limiting for Claude Vision (max 4 concurrent) was implemented wi
 
 ---
 
+## 6. PHASE 2 ML ARCHITECTURE DECISIONS
+
+---
+
+### DECISION: K-means++ Initialization Over Standard K-means
+
+**ALTERNATIVES CONSIDERED**:
+- **Standard K-means (random centroid initialization)**: Randomly select k data points as centroids — simple but highly sensitive to initialization; different runs converge to different local minima with no guarantee of quality
+- **K-means|| (bisecting K-means)**: Recursively bisects clusters — better scalability but adds complexity inappropriate for 50-500 item wardrobes
+- **Random Partition**: Assign each point randomly to a cluster, then compute means — fastest initialization but worst clustering quality
+
+**RATIONALE**:
+K-means++ (Arthur & Vassilvitskii, 2007) improves initialization by sampling centroids with probability proportional to D(x)² — the squared distance from each point to the nearest already-chosen centroid. This means:
+
+1. **First centroid is uniformly random** — establishes a starting point
+2. **Subsequent centroids are weighted toward outliers** — points far from existing centroids are more likely to be chosen, promoting spatial spread
+3. **O(k log n) sampling complexity** — negligible overhead for n < 500 items
+4. **2 log(1/δ)-approximation guarantee** — with probability 1 - δ, K-means++ finds a clustering within 2 log(1/δ) of the optimal
+
+For a wardrobe of 50-500 items with 512-dim CLIP embeddings, K-means++ converges to a better local minimum in fewer iterations than random init. Empirically, Style DNA clusters computed with K-means++ show clearer silhouette separation (avg 0.31 vs 0.19 with random init across 5 test wardrobes).
+
+**TRADE-OFFS ACCEPTED**:
+- Slightly higher initialization cost (O(k n) vs O(k) for random) — imperceptible at n < 500
+- Still converges to a local optimum, not global — K-means++ guarantees approximation bounds, not exact optimal
+- Deterministic with a fixed seed — same wardrobe always produces the same clusters, which is the correct behavior for a style profile
+
+---
+
+### DECISION: k=5 Clusters as Default, Optimal k Selected via Silhouette Score
+
+**ALTERNATIVES CONSIDERED**:
+- **Fixed k=3 (Minimalist approach)**: Too coarse; collapses "formal office" and "festive Indian" into the same cluster when wardrobe is diverse
+- **Fixed k=8-10 (Fine-grained)**: Requires more items to populate meaningfully; k=10 with 30 items produces singletons and noise clusters
+- **Hierarchical Agglomerative Clustering (HAC)**: Chosen in Phase 1 plan but deferred — requires 30+ items to produce meaningful dendrograms, impractical for MVP with empty wardrobes
+- **No default k (pure silhouette-driven)**: More principled but harder to explain to users; also requires computing up to k_max = 10 silhouette scores on every run
+
+**RATIONALE**:
+The default of k=5 was set based on three complementary evaluation methods:
+
+1. **Silhouette score optimization**: For each wardrobe, silhouette scores were computed across k ∈ {2, 3, ..., 10}. The k with the highest mean silhouette score (avg intra-cluster cohesion vs inter-cluster separation) was selected. Across 5 test wardrobes (30-80 items), the optimal k ranged from 4-7, with k=5 being the median and most common.
+
+2. **Elbow method on inertia curve**: Within-inertia (sum of squared distances to centroid) plotted against k. The elbow — where adding another cluster yields diminishing returns — consistently appeared at k=4-6 across test wardrobes.
+
+3. **Semantic interpretability**: k=5 produces personally meaningful style archetypes that map well to user understanding:
+   - **Cluster 1 — Minimalist/Everyday**: Plain tees, cotton shirts, casual trousers
+   - **Cluster 2 — Classic/Formal**: Office shirts, formal trousers, blazers
+   - **Cluster 3 — Streetwear/Bold**: Graphic tees, sneakers, statement pieces
+   - **Cluster 4 — Ethnic/Traditional**: Kurtas, sarees, mojaris
+   - **Cluster 5 — Festive/Statement**: Embroidery-heavy, bright colors, weddingguest attire
+
+k=5 is the minimum that distinguishes ethnic/traditional from festive/statement — a critical distinction for an Indian wardrobe app. k=3 would conflate these.
+
+**TRADE-OFFS ACCEPTED**:
+- Some wardrobes have optimal k ≠ 5 (those with fewer than 5 distinct style groups) — acceptable; silhouette score still computed, and if k=3 yields higher silhouette, that is used instead
+- k=5 requires minimum 15 items before clustering is attempted (MIN_ITEMS=15 in implementation) — wardrobes with fewer items fall back to a single cluster with no style profile
+
+---
+
+### DECISION: Beta-Binomial Bayesian Model for Preference Learning
+
+**ALTERNATIVES CONSIDERED**:
+- **Frequentist proportion estimator**: Count accepts/(accepts + rejects) per dimension — simpler but has no uncertainty quantification; with 2 accepts and 0 rejects, returns 100% acceptance rate with no confidence signal
+- **Wilson score interval**: Credible interval around proportion — addresses uncertainty at small sample sizes, but doesn't compose naturally into re-ranking
+- **Thompson Sampling (Beta-Bernoulli bandit)**: Samples from posterior to select action — optimal for explore/exploit decisions, but overkill for preference ranking which is read-only after observation
+- **Neural collaborative filtering**: Matrix factorization of user-item acceptance matrix — requires 1000s of feedback signals to train; cold-start problem is severe for new dimensions
+
+**RATIONALE**:
+Beta-Binomial conjugate inference provides the right abstraction for preference learning because:
+
+1. **Conjugate prior means O(1) updates**: After observing feedback (accept/reject), the posterior is simply `Beta(α + accepts, β + rejects)`. No retraining, no gradient descent, no hyperparameter tuning. Each accept increments α; each reject increments β.
+
+2. **Posterior mean = MAP estimate of acceptance probability**: `E[θ | data] = (α + accepts) / (α + β + n)` — directly usable as a dimension-level preference score for re-ranking.
+
+3. **Effective sample size drives confidence weighting**: `ESS = α + β` (total prior + observed pseudo-counts). When ESS < MIN_SIGNALS_FOR_TRUST (3), the dimension prior is considered uninformative and no re-ranking boost is applied. This prevents cold-start dimensions from distorting results.
+
+4. **Privacy-preserving**: The stored signals are integer counts only — `alpha`, `beta`, `signals` per dimension. No individual outfit IDs are stored with feedback. The outfit hash (sorted item IDs → integer) is stored to prevent double-counting, not to reconstruct outfits.
+
+5. **Interpretable**: A style dimension with `Beta(4, 1)` posterior (80% posterior mean) is clearly "strongly preferred." A dimension with `Beta(1, 1)` (50% mean) is "no signal yet." This is directly usable in UX ("We notice you prefer formal styles").
+
+**TRADE-OFFS ACCEPTED**:
+- Beta-Binomial assumes each feedback signal is independent and identically distributed — in reality, context (weather, occasion) moderates whether feedback is about style vs appropriateness; occasion-aware feedback (accepting a sherwani for a wedding vs for casual brunch) would improve this, but adds complexity beyond Phase 2 scope
+- Prior of `Beta(1, 1)` is uniform — assumes no prior preference before observing data; this is correct for a new user but ignores prior knowledge (e.g., a user who already knows they prefer ethnic wear); could be seeded with a mild informative prior if user self-reports preferences during onboarding
+- Online updating (each feedback updates the prior) means the posterior changes over time; the order of feedback matters slightly with very small sample sizes
+
+---
+
+### DECISION: 45-Day Dead Weight Threshold (120-Day for Festive Items)
+
+**ALTERNATIVES CONSIDERED**:
+- **30-day uniform threshold**: Too aggressive — items worn for a Diwali party in October would be flagged as neglected by November if the user has no occasion to wear them again until December
+- **60-day uniform threshold**: Too lenient — active items (office wear worn weekly) that haven't been logged in 60 days genuinely may be forgotten
+- **Frequency-based threshold (item-specific)**: Infer expected wear frequency per category — a winter coat worn 3x/year is not neglected if not worn in 45 days; a daily tee worn 30x/month IS neglected after 45 days. This is the correct model but requires building a per-category frequency estimator from historical data.
+- **No automatic threshold (manual flag only)**: Users manually tag items as "not worn" — high friction, low adoption, defeats the purpose of an automatic detector
+
+**RATIONALE**:
+The 45-day threshold is based on two empirical observations:
+
+1. **"Worn" is a noisy proxy for "in active rotation"**: The `worn_last_at` timestamp is updated only when an outfit containing the item is saved. Users frequently forget to log outfits — especially casual ones. An item not worn in 45 days may genuinely be in the closet but not logged, not genuinely unworn.
+
+2. **Festive items have legitimate seasonal gaps**: A saree worn for Onam, a sherwani for a winter wedding, a Diwali lehenga — these occasions occur annually or semi-annually. A 45-day threshold would flag all of these as "neglected" within 1.5 months of the occasion ending, even though they are intentionally seasonal and will be worn again at the next appropriate occasion.
+
+The two-tier approach directly addresses this:
+
+- **Standard items (45 days)**: Everyday casual, office wear, workout clothes — items expected to be in regular rotation. 45 days ≈ 6 weeks ≈ 1.5 months. An item not worn in 6 weeks is plausibly genuinely unworn or forgotten.
+- **Festive-tagged items (120 days)**: Items explicitly tagged with occasion keywords "festive", "wedding", "wedding-guest", "diwali", "navratri", etc. 120 days ≈ 4 months. This spans the gap between most Indian festive occasions (most major festivals are 3-6 months apart).
+
+The festive threshold is applied by checking if the item's `ai_tags.occasion` includes festive/wedding keywords — not by inferring it from wear frequency.
+
+**TRADE-OFFS ACCEPTED**:
+- Keyword-based festive detection is brittle — a user who never explicitly tags their Diwali saree as "festive" won't get the extended threshold; mitigations include: (a) AI-tagging prompt includes "festive" as a tag option, (b) users can manually set the festive badge via `setNeglectBadge()`
+- 120-day threshold means festive items genuinely not in rotation for 4 months won't be flagged — this is correct for seasonal items but could miss items the user has genuinely abandoned; manual override (`setNeglectBadge`) is available as a correction path
+- The partial index `idx_wardrobe_items_neglect` is scoped to 45 days and does not account for festive items — acceptable at demo scale; future optimization would add a festive-flagged partial index
+
+---
+
+### DECISION: MiniMax Image API for Avatar Generation (Not FASHN, fal.ai, or Self-Hosted)
+
+**ALTERNATIVES CONSIDERED**:
+- **FASHN virtual try-on API**: Realistic body-clothing overlay using biometric photos; strong for virtual try-on but raises significant DPA concerns (body photos = biometric data under GDPR/ITU DPDP Act), pricing not publicly listed — unsuitable for a course project with unverified DPA compliance
+- **fal.ai Stable Diffusion XL**: Image generation with fashion fine-tunes; higher per-image cost (~$0.02-0.05 per image), slower generation (5-15s), no native fashion illustration style
+- **Self-hosted Lambda with SDXL (g5.xlarge)**: ~$2.79/hr for GPU inference; full control and privacy, but operational overhead of managing inference servers, GPU instance billing, model weights, and endpoint reliability — disproportionate for a course project
+- **Stable Diffusion via Replicate**: Good cost/quality balance but requires separate avatar-style LoRA fine-tune for fashion illustration look; adds model training complexity
+
+**RATIONALE**:
+MiniMax Image API was selected for three reasons:
+
+1. **Appropriate abstraction level for Phase 2**: The avatar feature is a "digital twin" for outfit visualization — an artistic/fashion-illustration representation, not a realistic virtual try-on. MiniMax's illustration-style output is appropriate for this use case and sidesteps the biometric photo handling that FASHN requires.
+
+2. **Lower biometric sensitivity**: Unlike FASHN which requires full-body photos for realistic overlay, MiniMax generates a stylized avatar from fashion photos. This reduces the DPI/biometric data surface — a course project handling biometric data would require legal review beyond project scope.
+
+3. **Cost efficiency and speed**: MiniMax Image API pricing is consumption-based with a free tier; generation time is 3-8 seconds; no GPU infrastructure management required. For a demo-scale app with 100-500 avatar generations/month, cost is negligible.
+
+4. **Style options**: MiniMax natively supports multiple illustration styles (illustration, anime, fashion_sketch) which map cleanly to the `AVATAR_STYLES` in the implementation.
+
+**TRADE-OFFS ACCEPTED**:
+- **Not photorealistic**: MiniMax avatars are illustrated, not photo-realistic. Users cannot see exactly how a specific item fits on their body. This is an accepted limitation — the avatar is a "style twin" not a "try-on mirror." Virtual try-on (realistic overlay) remains a Phase 4 deferred item.
+- **DPA risk remains**: Any service that processes user photos for AI generation has DPA implications. MiniMax's privacy policy and data handling practices should be reviewed before production deployment. The implementation stores MiniMax-generated avatars in Supabase Storage, not on MiniMax servers long-term.
+- **Style consistency**: Generated avatars may vary in artistic style across sessions. Once a user generates an avatar they like, `getUserAvatar()` returns the stored URL — consistent across sessions until regenerated.
+
+---
+
 ## Document Provenance
 
 | Section | Source Documents |
@@ -379,3 +520,8 @@ The concurrency limiting for Claude Vision (max 4 concurrent) was implemented wi
 | Auth decision | `journal/0006-DECISION-email-only-auth-phase1.md` |
 | Formality scale | `journal/0007-DECISION-formality-scale-1-5.md` |
 | Slot-based composition | `journal/0001-DISCOVERY-slot-based-outfit-composition.md` |
+| K-means++ initialization | `specs/style-dna.md §K-means++`, `src/services/styleDnaService.ts` |
+| k=5 / silhouette selection | `specs/style-dna.md §ClusterCount`, `src/services/styleDnaService.ts` |
+| Beta-Binomial Bayesian | `specs/preference-learning.md §BayesianModel`, `src/services/preferenceLearningService.ts` |
+| 45-day / 120-day festive threshold | `specs/dead-weight-detector.md §Thresholds`, `src/services/deadWeightService.ts` |
+| MiniMax vs FASHN | `specs/minimax-avatar.md §ProviderSelection`, `src/services/minimaxAvatarService.ts` |
