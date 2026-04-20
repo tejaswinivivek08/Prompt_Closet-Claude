@@ -14,5 +14,4 @@ $$ LANGUAGE SQL SECURITY DEFINER;
 
 -- Index for efficient dead weight scan
 CREATE INDEX IF NOT EXISTS idx_wardrobe_items_neglect
-ON public.wardrobe_items(user_id, worn_last_at)
-WHERE worn_last_at IS NULL OR worn_last_at < NOW() - INTERVAL '45 days';
+ON public.wardrobe_items(user_id, worn_last_at);
