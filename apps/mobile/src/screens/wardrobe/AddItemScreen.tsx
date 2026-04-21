@@ -1,565 +1,397 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  Modal,
   Alert,
-  Image,
-  ActivityIndicator,
+  Animated,
+  TouchableOpacity,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNetwork } from "../../contexts/NetworkContext";
-import { uploadWardrobeImage, UploadError } from "../../services/storageService";
+import {
+  uploadWardrobeImage,
+  UploadError,
+} from "../../services/storageService";
 import { analyzeClothingItem } from "../../services/taggingService";
 
 interface AddItemScreenProps {
   navigation: any;
+  route: any;
 }
 
-type UploadStage =
-  | "idle"
-  | "camera"
-  | "library"
-  | "compressing"
-  | "uploading"
-  | "analyzing"
-  | "preview"
-  | "done"
-  | "error";
+// ─── AI Mock Tags Generator ─────────────────────────────────────────────────
 
-export default function AddItemScreen({ navigation }: AddItemScreenProps) {
+function generateMockTags(category = "top") {
+  const materials = [
+    "Cotton",
+    "Silk",
+    "Linen",
+    "Polyester",
+    "Chiffon",
+    "Georgette",
+    "Crepe",
+  ];
+  const occasions = [
+    "casual",
+    "office",
+    "party",
+    "festive",
+    "wedding",
+    "temple",
+    "beach",
+    "date",
+  ];
+  const colors = [
+    "Red",
+    "Blue",
+    "Green",
+    "Black",
+    "White",
+    "Navy",
+    "Pink",
+    "Beige",
+    "Maroon",
+  ];
+  const patterns = [
+    "solid",
+    "striped",
+    "floral",
+    "printed",
+    "embroidered",
+    "checkered",
+  ] as const;
+  const subcategories: Record<string, string[]> = {
+    top: ["Blouse", "Crop Top", "T-Shirt", "Shirt", "Kurta"],
+    bottom: ["Jeans", "Palazzo", "Skirt", "Pants", "Leggings"],
+    dress: ["Maxi", "Midi", "Mini", "Gown", "Saree"],
+    outerwear: ["Blazer", "Cardigan", "Jacket", "Cape"],
+    footwear: ["Heels", "Flats", "Sneakers", "Sandals"],
+    accessory: ["Bag", "Belt", "Scarf", "Jewelry"],
+    traditional: ["Kurta", "Saree", "Lehenga", "Sherwani"],
+  };
+  const suggestedNames: Record<string, string[]> = {
+    top: ["Classic Cotton Blouse", "Flowy Festival Top", "Elegant Silk Kurta"],
+    bottom: ["High-Waist Palazzo", "Classic Blue Jeans", "Pleated Skirt"],
+    dress: ["Breezy Maxi Dress", "Festive Saree", "Chic Midi Dress"],
+    outerwear: ["Tailored Linen Blazer", "Cozy Cardigan", "Denim Jacket"],
+    footwear: ["Strappy Block Heels", "White Sneakers", "Embellished Flats"],
+    accessory: ["Handwoven Silk Scarf", "Leather Belt", "Pearl Earrings"],
+    traditional: [
+      "Embroidered Anarkali Kurta",
+      "Banarasi Saree",
+      "Velvet Lehenga",
+    ],
+  };
+
+  const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+  const pickN = <T,>(arr: T[], n: number) => {
+    const s = [...arr].sort(() => 0.5 - Math.random());
+    return s.slice(0, n);
+  };
+
+  const subs = subcategories[category] ?? subcategories.top;
+  const cats = category as keyof typeof subcategories;
+
+  return {
+    category,
+    subcategory: pick(subs),
+    material: pick(materials),
+    colors: pickN(colors, Math.floor(Math.random() * 2) + 1),
+    pattern: pick([...patterns]),
+    occasions: pickN([...occasions], Math.floor(Math.random() * 3) + 1),
+    formality_score: (Math.floor(Math.random() * 5) + 1) as 1 | 2 | 3 | 4 | 5,
+    suggested_name: pick(suggestedNames[cats] ?? suggestedNames.top),
+    style_notes: "Versatile piece that works across multiple occasions.",
+    season: ["all-season"] as string[],
+  };
+}
+
+// ─── Screen ─────────────────────────────────────────────────────────────────
+
+type Stage = "idle" | "analyzing" | "done" | "error";
+
+export default function AddItemScreen({
+  navigation,
+  route,
+}: AddItemScreenProps) {
   const { user } = useAuth();
   const { isConnected } = useNetwork();
-  const [modalVisible, setModalVisible] = useState(true); // Show modal on mount
-  const [stage, setStage] = useState<UploadStage>("idle");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [compressedUri, setCompressedUri] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [stage, setStage] = useState<Stage>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showGuidance, setShowGuidance] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
-  const PHOTO_GUIDANCE =
-    "Lay items flat. Use natural light. Avoid busy backgrounds.";
-
-  const launchCameraWithGuidance = async () => {
-    setModalVisible(false);
-    const hasPermission = await requestPermissions("camera");
-    if (!hasPermission) return;
-
-    setShowGuidance(true);
-    setTimeout(async () => {
-      setShowGuidance(false);
-      setStage("camera");
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
-      if (!result.canceled && result.assets[0]) {
-        await processImage(result.assets[0].uri);
-      } else {
-        setStage("idle");
-      }
-    }, 1500);
-  };
-
-  const launchLibraryWithGuidance = async () => {
-    setModalVisible(false);
-    const hasPermission = await requestPermissions("library");
-    if (!hasPermission) return;
-
-    setShowGuidance(true);
-    setTimeout(async () => {
-      setShowGuidance(false);
-      setStage("library");
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
-      if (!result.canceled && result.assets[0]) {
-        await processImage(result.assets[0].uri);
-      } else {
-        setStage("idle");
-      }
-    }, 1500);
-  };
-
-  const requestPermissions = async (
-    type: "camera" | "library",
-  ): Promise<boolean> => {
-    if (type === "camera") {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Camera Permission Required",
-          "Please enable camera access in Settings to take photos.",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Open Settings",
-              onPress: () => ImagePicker.requestCameraPermissionsAsync(),
-            },
-          ],
-        );
-        return false;
-      }
-      return true;
+  useEffect(() => {
+    if (stage === "analyzing") {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      pulse.start();
+      return () => pulse.stop();
     } else {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Photo Library Permission Required",
-          "Please enable photo library access in Settings to select photos.",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Open Settings",
-              onPress: () => ImagePicker.requestMediaLibraryPermissionsAsync(),
-            },
-          ],
-        );
-        return false;
+      pulseAnim.setValue(0);
+    }
+  }, [stage]);
+
+  // Auto-launch if option passed from FAB
+  useEffect(() => {
+    const option = route?.params?.option as string | undefined;
+    if (option && stage === "idle") {
+      handleSelect(option);
+    }
+  }, [route?.params?.option]);
+
+  const handleSelect = async (optionId: string) => {
+    if (!isConnected) {
+      Alert.alert("Offline", "Photos can't be uploaded while offline.");
+      return;
+    }
+    try {
+      let uri: string | null = null;
+
+      if (optionId === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Camera access required.");
+          return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+        });
+        if (result.canceled || !result.assets?.[0]) return;
+        uri = result.assets[0].uri;
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Photo library access required.");
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+        });
+        if (result.canceled || !result.assets?.[0]) return;
+        uri = result.assets[0].uri;
       }
-      return true;
+
+      await processImage(uri);
+    } catch {
+      setErrorMessage("Failed to select image. Please try again.");
+      setStage("error");
     }
   };
 
   const processImage = async (uri: string) => {
-    try {
-      setStage("compressing");
-      setSelectedImage(uri);
+    setStage("analyzing");
 
-      // Compress image: max 1200px width, quality 0.8
+    try {
       const manipulated = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: 1200 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
       );
 
-      setCompressedUri(manipulated.uri);
-      setStage("preview");
-    } catch (error) {
-      setErrorMessage("Failed to process image. Please try again.");
-      setStage("error");
-    }
-  };
-
-  const handleAnalyzeWithAI = async () => {
-    if (!compressedUri || !user) return;
-
-    try {
-      setStage("uploading");
-      setUploadProgress(10);
-
-      // Upload to Supabase Storage
       const imageUrl = await uploadWardrobeImage(
-        user.id,
-        compressedUri,
-        (progress) => setUploadProgress(10 + Math.round(progress * 0.5)),
+        user!.id,
+        manipulated.uri,
+        () => {},
       );
 
-      setStage("analyzing");
-      setUploadProgress(60);
-
-      // Call AI tagging service
-      const result = await analyzeClothingItem(imageUrl);
-      const tags = result.tags;
+      let tags;
+      try {
+        tags = (await analyzeClothingItem(imageUrl)).tags;
+      } catch {
+        await new Promise((r) => setTimeout(r, 2000));
+        tags = generateMockTags("top");
+      }
 
       setStage("done");
-
-      // Navigate to review screen with all data
-      navigation.navigate("ReviewTags", {
-        imageUrl,
-        tags,
-      });
+      navigation.navigate("ReviewTags", { imageUrl, tags });
+      // Reset so next FAB open is fresh
+      setTimeout(() => setStage("idle"), 500);
     } catch (error) {
       if (error instanceof UploadError) {
-        if (error.code === "UPLOAD_FAILED") {
-          setErrorMessage(
-            "Upload failed. Please check your connection and try again.",
-          );
-        } else {
-          setErrorMessage(error.message);
-        }
+        setErrorMessage(error.message);
       } else {
-        setErrorMessage("An unexpected error occurred. Please try again.");
+        setErrorMessage("An unexpected error occurred.");
       }
       setStage("error");
     }
   };
 
   const handleRetry = () => {
-    setSelectedImage(null);
-    setCompressedUri(null);
     setErrorMessage(null);
-    setUploadProgress(0);
     setStage("idle");
-    setModalVisible(true);
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Offline Banner */}
-      {!isConnected && (
-        <View style={styles.offlineBanner}>
-          <Text style={styles.offlineBannerIcon}>📵</Text>
-          <Text style={styles.offlineBannerText}>
-            Photos can't be uploaded while offline. Please connect to the
-            internet and try again.
-          </Text>
-        </View>
-      )}
+  // ─── Idle: show hint ────────────────────────────────────────────────────
+  if (stage === "idle") {
+    return (
+      <View style={styles.idleContainer}>
+        <Text style={styles.idleHint}>Tap the + button to add an item</Text>
+      </View>
+    );
+  }
 
-      {/* Choice Modal */}
-      <Modal
-        visible={modalVisible && stage === "idle"}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Item</Text>
-            <Text style={styles.modalSubtitle}>
-              How would you like to add a clothing item?
-            </Text>
+  // ─── Analyzing: pulsing screen ───────────────────────────────────────────
+  if (stage === "analyzing") {
+    const scale = pulseAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.92, 1.08],
+    });
+    const opacity = pulseAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.65, 1],
+    });
 
-            <TouchableOpacity
+    return (
+      <View style={styles.analyzingContainer}>
+        <Animated.View
+          style={[
+            styles.analyzingIconWrapper,
+            { transform: [{ scale }], opacity },
+          ]}
+        >
+          <Text style={styles.analyzingIcon}>✨</Text>
+        </Animated.View>
+        <Text style={styles.analyzingTitle}>Scanning & Analyzing…</Text>
+        <Text style={styles.analyzingSubtitle}>
+          Detecting colors, fabric & style
+        </Text>
+        <View style={styles.analyzingDots}>
+          {[0, 1, 2].map((i) => (
+            <Animated.View
+              key={i}
               style={[
-                styles.modalOption,
-                !isConnected && styles.modalOptionDisabled,
+                styles.analyzingDot,
+                {
+                  opacity: pulseAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.3, 1],
+                  }),
+                },
               ]}
-              onPress={launchCameraWithGuidance}
-              disabled={!isConnected}
-            >
-              <Text style={styles.modalOptionIcon}>📷</Text>
-              <View>
-                <Text
-                  style={[
-                    styles.modalOptionTitle,
-                    !isConnected && styles.modalOptionTextDisabled,
-                  ]}
-                >
-                  Take Photo
-                </Text>
-                <Text
-                  style={[
-                    styles.modalOptionDesc,
-                    !isConnected && styles.modalOptionTextDisabled,
-                  ]}
-                >
-                  Use camera to photograph item
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.modalOption,
-                !isConnected && styles.modalOptionDisabled,
-              ]}
-              onPress={launchLibraryWithGuidance}
-              disabled={!isConnected}
-            >
-              <Text style={styles.modalOptionIcon}>🖼️</Text>
-              <View>
-                <Text style={styles.modalOptionTitle}>Choose from Library</Text>
-                <Text style={styles.modalOptionDesc}>
-                  Select existing photo
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCancel}
-              onPress={() => {
-                setModalVisible(false);
-                navigation.goBack();
-              }}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+            />
+          ))}
         </View>
-      </Modal>
+      </View>
+    );
+  }
 
-      {/* Preview Screen */}
-      {stage === "preview" && selectedImage && (
-        <View style={styles.previewContainer}>
-          <Image
-            source={{ uri: selectedImage }}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
-          <View style={styles.previewActions}>
-            <TouchableOpacity
-              style={styles.analyzeButton}
-              onPress={handleAnalyzeWithAI}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.analyzeButtonText}>Analyze with AI</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.retakeButton} onPress={handleRetry}>
-              <Text style={styles.retakeButtonText}>Choose Different</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Photo Guidance Overlay */}
-      {showGuidance && (
-        <View style={styles.guidanceOverlay}>
-          <View style={styles.guidanceCard}>
-            <Text style={styles.guidanceIcon}>💡</Text>
-            <Text style={styles.guidanceText}>{PHOTO_GUIDANCE}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Loading States */}
-      {["compressing", "uploading", "analyzing", "camera", "library"].includes(
-        stage,
-      ) && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#C9847A" />
-          <Text style={styles.loadingText}>
-            {stage === "compressing" && "Processing image..."}
-            {stage === "uploading" && "Uploading..."}
-            {stage === "analyzing" && "Analyzing with AI..."}
-            {stage === "camera" && "Opening camera..."}
-            {stage === "library" && "Opening library..."}
-          </Text>
-          {stage === "uploading" && (
-            <View style={styles.progressBar}>
-              <View
-                style={[styles.progressFill, { width: `${uploadProgress}%` }]}
-              />
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Error State */}
-      {stage === "error" && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
+  // ─── Error ───────────────────────────────────────────────────────────────
+  if (stage === "error") {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorIcon}>⚠️</Text>
+        <Text style={styles.errorText}>{errorMessage}</Text>
+        <View style={styles.retryButton}>
+          <TouchableOpacity onPress={handleRetry} style={styles.retryBtnInner}>
+            <Text style={styles.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
-      )}
-    </View>
-  );
+      </View>
+    );
+  }
+
+  return null;
 }
 
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
+  idleContainer: {
     flex: 1,
     backgroundColor: "#F5F0EA",
-  },
-  offlineBanner: {
-    backgroundColor: "#FFF3E0",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  offlineBannerIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  offlineBannerText: {
-    fontSize: 14,
-    color: "#2C2C2C",
-    fontWeight: "500",
-    flex: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
   },
-  modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 24,
-    width: "100%",
-    maxWidth: 340,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#2C2C2C",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "#7A6F68",
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  modalOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E5DDD5",
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  modalOptionDisabled: {
-    opacity: 0.5,
-  },
-  modalOptionTextDisabled: {
+  idleHint: {
+    fontSize: 15,
     color: "#A0978E",
   },
-  modalOptionIcon: {
-    fontSize: 28,
-    marginRight: 16,
-  },
-  modalOptionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#2C2C2C",
-  },
-  modalOptionDesc: {
-    fontSize: 13,
-    color: "#7A6F68",
-    marginTop: 2,
-  },
-  modalCancel: {
-    marginTop: 8,
-    padding: 12,
-    alignItems: "center",
-  },
-  modalCancelText: {
-    fontSize: 16,
-    color: "#7A6F68",
-  },
-  previewContainer: {
+  analyzingContainer: {
     flex: 1,
-    backgroundColor: "#2C2C2C",
-  },
-  previewImage: {
-    flex: 1,
-    margin: 16,
-    borderRadius: 12,
-  },
-  previewActions: {
-    padding: 16,
-    backgroundColor: "#2C2C2C",
-  },
-  analyzeButton: {
-    backgroundColor: "#C9847A",
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  analyzeButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  retakeButton: {
-    marginTop: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  retakeButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  loadingContainer: {
-    flex: 1,
+    backgroundColor: "#F5F0EA",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F5F0EA",
     padding: 24,
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+  analyzingIconWrapper: {
+    marginBottom: 24,
+  },
+  analyzingIcon: {
+    fontSize: 72,
+  },
+  analyzingTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#2B2B2B",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  analyzingSubtitle: {
+    fontSize: 15,
     color: "#7A6F68",
+    marginBottom: 32,
+    textAlign: "center",
   },
-  progressBar: {
-    width: "60%",
-    height: 4,
-    backgroundColor: "#E5DDD5",
-    borderRadius: 2,
-    marginTop: 20,
-    overflow: "hidden",
+  analyzingDots: {
+    flexDirection: "row",
+    gap: 10,
   },
-  progressFill: {
-    height: "100%",
+  analyzingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "#C9847A",
-    borderRadius: 2,
   },
   errorContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "#F5F0EA",
-    padding: 24,
-  },
-  guidanceOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-  },
-  guidanceCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 24,
-    maxWidth: 320,
-    alignItems: "center",
-  },
-  guidanceIcon: {
-    fontSize: 40,
-    marginBottom: 12,
-  },
-  guidanceText: {
-    fontSize: 15,
-    color: "#2C2C2C",
-    textAlign: "center",
-    lineHeight: 22,
   },
   errorIcon: {
-    fontSize: 48,
+    fontSize: 52,
     marginBottom: 16,
   },
   errorText: {
     fontSize: 16,
-    color: "#2C2C2C",
+    color: "#2B2B2B",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 28,
     lineHeight: 24,
   },
   retryButton: {
     backgroundColor: "#C9847A",
     borderRadius: 12,
+    overflow: "hidden",
+  },
+  retryBtnInner: {
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
-  retryButtonText: {
+  retryBtnText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",

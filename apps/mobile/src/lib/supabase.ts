@@ -80,24 +80,30 @@ export type Database = {
         Row: {
           id: string;
           full_name: string | null;
+          username: string | null;
           avatar_url: string | null;
           skin_tone_palette: string | null;
           body_measurements: Record<string, unknown> | null;
+          style_preferences: string[] | null;
           created_at: string;
         };
         Insert: {
           id: string;
           full_name?: string | null;
+          username?: string | null;
           avatar_url?: string | null;
           skin_tone_palette?: string | null;
           body_measurements?: Record<string, unknown> | null;
+          style_preferences?: string[] | null;
           created_at?: string;
         };
         Update: {
           full_name?: string | null;
+          username?: string | null;
           avatar_url?: string | null;
           skin_tone_palette?: string | null;
           body_measurements?: Record<string, unknown> | null;
+          style_preferences?: string[] | null;
         };
       };
       wardrobe_items: {
@@ -120,6 +126,8 @@ export type Database = {
           wear_count: number;
           is_active: boolean;
           ai_tags: Record<string, unknown> | null;
+          suggested_name: string | null;
+          style_notes: string | null;
           created_at: string;
         };
         Insert: {
@@ -141,6 +149,8 @@ export type Database = {
           wear_count?: number;
           is_active?: boolean;
           ai_tags?: Record<string, unknown> | null;
+          suggested_name?: string | null;
+          style_notes?: string | null;
           created_at?: string;
         };
         Update: {
@@ -160,6 +170,8 @@ export type Database = {
           wear_count?: number;
           is_active?: boolean;
           ai_tags?: Record<string, unknown> | null;
+          suggested_name?: string | null;
+          style_notes?: string | null;
         };
       };
       item_embeddings: {

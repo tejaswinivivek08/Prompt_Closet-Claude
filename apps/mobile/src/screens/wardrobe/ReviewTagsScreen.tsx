@@ -91,6 +91,12 @@ export default function ReviewTagsScreen({
   const [formalityScore, setFormalityScore] = useState(
     initialTags.formality_score,
   );
+  const [suggestedName, setSuggestedName] = useState(
+    (initialTags as any).suggested_name ?? initialTags.suggested_name ?? "",
+  );
+  const [styleNotes, setStyleNotes] = useState(
+    (initialTags as any).style_notes ?? initialTags.style_notes ?? "",
+  );
   const [saving, setSaving] = useState(false);
 
   const toggleColor = (colorName: string) => {
@@ -137,6 +143,8 @@ export default function ReviewTagsScreen({
           formality_score: formalityScore,
           season: initialTags.season ?? ["all-season"],
           ai_tags: initialTags,
+          suggested_name: suggestedName || null,
+          style_notes: styleNotes || null,
         })
         .select()
         .single();
@@ -294,6 +302,22 @@ export default function ReviewTagsScreen({
           ))}
         </View>
       </View>
+
+      {/* Name */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Name</Text>
+        <View style={styles.nameInput}>
+          <Text style={styles.nameText}>{suggestedName || "—"}</Text>
+        </View>
+      </View>
+
+      {/* Style Notes */}
+      {styleNotes ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Style Notes</Text>
+          <Text style={styles.styleNotesText}>{styleNotes}</Text>
+        </View>
+      ) : null}
 
       {/* Formality Score */}
       <View style={styles.section}>
@@ -482,5 +506,24 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  nameInput: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#E5DDD5",
+  },
+  nameText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2B2B2B",
+  },
+  styleNotesText: {
+    fontSize: 14,
+    color: "#7A6F68",
+    lineHeight: 20,
+    fontStyle: "italic",
   },
 });
