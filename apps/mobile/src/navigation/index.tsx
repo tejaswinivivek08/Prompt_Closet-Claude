@@ -31,11 +31,11 @@ import ProfileScreen from "../screens/wardrobe/ProfileScreen";
 // ─── Custom Tab Bar ─────────────────────────────────────────────────────────
 
 const TAB_BAR_TABS = [
-  { name: "Closet", icon: require("../assets/tab-closet.png") },
-  { name: "Style", icon: require("../assets/tab-style.png") },
-  { name: "Search", icon: require("../assets/tab-search.png") },
-  { name: "Calendar", icon: require("../assets/tab-history.png") },
-  { name: "Profile", icon: require("../assets/tab-profile.png") },
+  { name: "Closet", icon: require("../../assets/tab-closet.png") },
+  { name: "Style", icon: require("../../assets/tab-style.png") },
+  { name: "Search", icon: require("../../assets/tab-search.png") },
+  { name: "Calendar", icon: require("../../assets/tab-history.png") },
+  { name: "Profile", icon: require("../../assets/tab-profile.png") },
 ];
 
 const FAB_OPTIONS = [
