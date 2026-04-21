@@ -37,6 +37,7 @@ const TAB_BAR_TABS = [
   { name: "Calendar", icon: require("../../assets/tab-history.png") },
   { name: "Profile", icon: require("../../assets/tab-profile.png") },
 ];
+const VISIBLE_TAB_COUNT = 5;
 
 const FAB_OPTIONS = [
   { id: "camera", icon: "📷", label: "Take Photo" },
@@ -149,10 +150,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       {/* Tabs */}
       <View style={tabStyles.tabsRow}>
         {state.routes.map((route: any, index: number) => {
+          // Skip hidden routes (AddItem)
+          if (index >= VISIBLE_TAB_COUNT) return null;
           const isActive = state.index === index;
           const { options } = descriptors[route.key];
-          const label = options.tabBarLabel ?? options.title ?? route.name;
-          const icon = TAB_BAR_TABS[index]?.icon;
+          const tab = TAB_BAR_TABS[index];
 
           const onPress = () => {
             const event = navigation.emit({
@@ -174,14 +176,12 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               onPress={onPress}
               style={tabStyles.tab}
             >
-              {icon ? (
+              {tab?.icon ? (
                 <Image
-                  source={icon}
-                  style={[
-                    tabStyles.tabIcon,
-                    isActive && tabStyles.tabIconActive,
-                  ]}
+                  source={tab.icon}
+                  style={tabStyles.tabIcon}
                   resizeMode="contain"
+                  tintColor={isActive ? "#C9847A" : "#888780"}
                 />
               ) : (
                 <Text
@@ -190,7 +190,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                     isActive && tabStyles.tabLabelActive,
                   ]}
                 >
-                  {label}
+                  {tab?.name ?? route.name}
                 </Text>
               )}
             </TouchableOpacity>
@@ -286,12 +286,8 @@ const tabStyles = StyleSheet.create({
     alignItems: "center",
   },
   tabIcon: {
-    width: 26,
-    height: 26,
-    opacity: 0.5,
-  },
-  tabIconActive: {
-    opacity: 1,
+    width: 28,
+    height: 28,
   },
   tabLabel: {
     fontSize: 11,
@@ -363,7 +359,7 @@ const tabStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowRadius: 14,
     elevation: 10,
-    marginBottom: -8,
+    marginBottom: -40,
   },
   fabTouchInner: {
     width: 62,
