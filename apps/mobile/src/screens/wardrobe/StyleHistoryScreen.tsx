@@ -12,6 +12,7 @@ import {
   SectionList,
   Pressable,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
 
@@ -366,7 +367,7 @@ export default function StyleHistoryScreen({
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Style History</Text>
@@ -406,7 +407,7 @@ export default function StyleHistoryScreen({
           ListFooterComponent={<View style={styles.listFooter} />}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

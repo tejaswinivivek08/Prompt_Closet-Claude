@@ -7,6 +7,7 @@ import {
   Animated,
   TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useAuth } from "../../contexts/AuthContext";
@@ -246,9 +247,9 @@ export default function AddItemScreen({
   // ─── Idle: show hint ────────────────────────────────────────────────────
   if (stage === "idle") {
     return (
-      <View style={styles.idleContainer}>
+      <SafeAreaView style={styles.idleContainer} edges={["top"]}>
         <Text style={styles.idleHint}>Tap the + button to add an item</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -264,7 +265,7 @@ export default function AddItemScreen({
     });
 
     return (
-      <View style={styles.analyzingContainer}>
+      <SafeAreaView style={styles.analyzingContainer} edges={["top"]}>
         <Animated.View
           style={[
             styles.analyzingIconWrapper,
@@ -293,14 +294,14 @@ export default function AddItemScreen({
             />
           ))}
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   // ─── Error ───────────────────────────────────────────────────────────────
   if (stage === "error") {
     return (
-      <View style={styles.errorContainer}>
+      <SafeAreaView style={styles.errorContainer} edges={["top"]}>
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>{errorMessage}</Text>
         <View style={styles.retryButton}>
@@ -308,7 +309,7 @@ export default function AddItemScreen({
             <Text style={styles.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 

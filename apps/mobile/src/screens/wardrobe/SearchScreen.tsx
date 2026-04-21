@@ -12,6 +12,7 @@ import {
   Dimensions,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase, deleteItem } from "../../lib/supabase";
@@ -317,7 +318,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Search</Text>
@@ -364,7 +365,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
           ListFooterComponent={<View style={{ height: 100 }} />}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

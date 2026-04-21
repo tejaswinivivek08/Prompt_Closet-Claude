@@ -18,6 +18,7 @@ import {
   Dimensions,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   computeStyleDNA,
@@ -132,77 +133,81 @@ export default function StyleDNAScreen() {
   if (!styleDNA) return null;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#C9847A"
-        />
-      }
-    >
-      {/* Header */}
-      <Text style={styles.title}>Your Style DNA</Text>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#C9847A"
+          />
+        }
+      >
+        {/* Header */}
+        <Text style={styles.title}>Your Style DNA</Text>
 
-      {/* Metrics Strip */}
-      <View style={styles.metricsRow}>
-        <MetricCard
-          label="Style Clusters"
-          value={`${styleDNA.k_optimal}`}
-          sub={`k=${styleDNA.k_optimal} (optimal)`}
-        />
-        <MetricCard
-          label="Silhouette Score"
-          value={styleDNA.silhouette_score.toFixed(3)}
-          sub={formatSilhouette(styleDNA.silhouette_score)}
-        />
-      </View>
+        {/* Metrics Strip */}
+        <View style={styles.metricsRow}>
+          <MetricCard
+            label="Style Clusters"
+            value={`${styleDNA.k_optimal}`}
+            sub={`k=${styleDNA.k_optimal} (optimal)`}
+          />
+          <MetricCard
+            label="Silhouette Score"
+            value={styleDNA.silhouette_score.toFixed(3)}
+            sub={formatSilhouette(styleDNA.silhouette_score)}
+          />
+        </View>
 
-      {/* Elbow / Silhouette Chart Placeholder */}
-      <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Cluster Quality</Text>
-        <View style={styles.chartBars}>
-          {styleDNA.silhouette_scores.map((score, i) => (
-            <View key={i} style={styles.chartBar}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    height: `${Math.max(score * 100, 5)}%`,
-                    backgroundColor: CLUSTER_COLORS[i % CLUSTER_COLORS.length],
-                  },
-                ]}
-              />
-              <Text style={styles.barLabel}>k={i + 2}</Text>
-            </View>
+        {/* Elbow / Silhouette Chart Placeholder */}
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Cluster Quality</Text>
+          <View style={styles.chartBars}>
+            {styleDNA.silhouette_scores.map((score, i) => (
+              <View key={i} style={styles.chartBar}>
+                <View
+                  style={[
+                    styles.barFill,
+                    {
+                      height: `${Math.max(score * 100, 5)}%`,
+                      backgroundColor:
+                        CLUSTER_COLORS[i % CLUSTER_COLORS.length],
+                    },
+                  ]}
+                />
+                <Text style={styles.barLabel}>k={i + 2}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.chartNote}>
+            Silhouette scores by cluster count. Higher = better defined
+            clusters.
+          </Text>
+        </View>
+
+        {/* Cluster Grid */}
+        <Text style={styles.sectionTitle}>Your Style Archetypes</Text>
+        <View style={styles.clusterGrid}>
+          {styleDNA.clusters.map((cluster) => (
+            <ClusterCard key={cluster.cluster_id} cluster={cluster} />
           ))}
         </View>
-        <Text style={styles.chartNote}>
-          Silhouette scores by cluster count. Higher = better defined clusters.
+
+        {/* Formality Range */}
+        <View style={styles.formalityCard}>
+          <Text style={styles.formalityTitle}>Your Formality Range</Text>
+          <FormalitySlider clusters={styleDNA.clusters} />
+        </View>
+
+        {/* Footer note */}
+        <Text style={styles.footer}>
+          Computed {new Date(styleDNA.computed_at).toLocaleDateString()}
         </Text>
-      </View>
-
-      {/* Cluster Grid */}
-      <Text style={styles.sectionTitle}>Your Style Archetypes</Text>
-      <View style={styles.clusterGrid}>
-        {styleDNA.clusters.map((cluster) => (
-          <ClusterCard key={cluster.cluster_id} cluster={cluster} />
-        ))}
-      </View>
-
-      {/* Formality Range */}
-      <View style={styles.formalityCard}>
-        <Text style={styles.formalityTitle}>Your Formality Range</Text>
-        <FormalitySlider clusters={styleDNA.clusters} />
-      </View>
-
-      {/* Footer note */}
-      <Text style={styles.footer}>
-        Computed {new Date(styleDNA.computed_at).toLocaleDateString()}
-      </Text>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase, deleteItem } from "../../lib/supabase";
 
@@ -113,7 +114,7 @@ export default function ItemDetailScreen({
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Full-screen image */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Image
@@ -257,7 +258,7 @@ export default function ItemDetailScreen({
       >
         <Text style={styles.closeButtonText}>✕</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

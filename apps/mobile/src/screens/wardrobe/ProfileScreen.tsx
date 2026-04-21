@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
 
@@ -134,175 +135,185 @@ export default function ProfileScreen() {
     : (user?.email?.[0]?.toUpperCase() ?? "?");
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        {editing ? (
-          <View style={styles.editNameRow}>
-            <TouchableOpacity style={styles.editInput} onPress={() => {}}>
-              <Text
-                style={[styles.editInputText, !editName && styles.placeholder]}
-              >
-                {editName || "Your name"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.editSaveBtn}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              <Text style={styles.editSaveBtnText}>
-                {saving ? "..." : "Save"}
-              </Text>
-            </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
-        ) : (
-          <TouchableOpacity onPress={() => setEditing(true)}>
-            <Text style={styles.userName}>{name || "Your Name"}</Text>
-            <Text style={styles.userEmail}>{user?.email}</Text>
-          </TouchableOpacity>
-        )}
-        {!editing && (
-          <TouchableOpacity
-            style={styles.editIconBtn}
-            onPress={() => setEditing(true)}
-          >
-            <Text style={styles.editIconText}>✏️</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Body Profile Card */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Body Profile</Text>
-        <View style={styles.metricsRow}>
-          <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Height</Text>
-            <TouchableOpacity style={styles.metricInput} onPress={() => {}}>
-              <Text
-                style={[styles.metricValue, !editHeight && styles.placeholder]}
+          {editing ? (
+            <View style={styles.editNameRow}>
+              <TouchableOpacity style={styles.editInput} onPress={() => {}}>
+                <Text
+                  style={[
+                    styles.editInputText,
+                    !editName && styles.placeholder,
+                  ]}
+                >
+                  {editName || "Your name"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.editSaveBtn}
+                onPress={handleSave}
+                disabled={saving}
               >
-                {editing ? editHeight || "cm" : height || "— cm"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Weight</Text>
-            <TouchableOpacity style={styles.metricInput} onPress={() => {}}>
-              <Text
-                style={[styles.metricValue, !editWeight && styles.placeholder]}
-              >
-                {editing ? editWeight || "kg" : weight || "— kg"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <Text style={[styles.cardLabel, { marginTop: 16 }]}>Skin Tone</Text>
-        <View style={styles.skinToneRow}>
-          {SKIN_TONES.map((tone) => (
-            <TouchableOpacity
-              key={tone.value}
-              onPress={() =>
-                editing
-                  ? setSkinTone(skinTone === tone.value ? null : tone.value)
-                  : null
-              }
-              style={[
-                styles.skinSwatch,
-                { backgroundColor: tone.hex },
-                skinTone === tone.value && styles.skinSwatchSelected,
-              ]}
-            >
-              {skinTone === tone.value && (
-                <Text style={styles.skinCheck}>✓</Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-        {skinTone && (
-          <Text style={styles.skinLabel}>
-            {SKIN_TONES.find((t) => t.value === skinTone)?.label}
-          </Text>
-        )}
-      </View>
-
-      {/* Face Scan Card */}
-      <View style={styles.card}>
-        <View style={styles.faceScanRow}>
-          <Text style={styles.faceIcon}>🤳</Text>
-          <View style={styles.faceScanContent}>
-            <View style={styles.comingSoonBadge}>
-              <Text style={styles.comingSoonText}>Coming Soon</Text>
+                <Text style={styles.editSaveBtnText}>
+                  {saving ? "..." : "Save"}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.faceDesc}>
-              AI-powered personal color analysis and style recommendations based
-              on your features.
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Style Preferences */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Style Preferences</Text>
-        <View style={styles.chipsRow}>
-          {STYLE_PREFERENCES.map((pref) => (
+          ) : (
+            <TouchableOpacity onPress={() => setEditing(true)}>
+              <Text style={styles.userName}>{name || "Your Name"}</Text>
+              <Text style={styles.userEmail}>{user?.email}</Text>
+            </TouchableOpacity>
+          )}
+          {!editing && (
             <TouchableOpacity
-              key={pref}
-              style={[
-                styles.chip,
-                stylePrefs.includes(pref) && styles.chipActive,
-              ]}
-              onPress={() => toggleStylePref(pref)}
-              disabled={!editing}
+              style={styles.editIconBtn}
+              onPress={() => setEditing(true)}
             >
-              <Text
+              <Text style={styles.editIconText}>✏️</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Body Profile Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Body Profile</Text>
+          <View style={styles.metricsRow}>
+            <View style={styles.metric}>
+              <Text style={styles.metricLabel}>Height</Text>
+              <TouchableOpacity style={styles.metricInput} onPress={() => {}}>
+                <Text
+                  style={[
+                    styles.metricValue,
+                    !editHeight && styles.placeholder,
+                  ]}
+                >
+                  {editing ? editHeight || "cm" : height || "— cm"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.metricDivider} />
+            <View style={styles.metric}>
+              <Text style={styles.metricLabel}>Weight</Text>
+              <TouchableOpacity style={styles.metricInput} onPress={() => {}}>
+                <Text
+                  style={[
+                    styles.metricValue,
+                    !editWeight && styles.placeholder,
+                  ]}
+                >
+                  {editing ? editWeight || "kg" : weight || "— kg"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={[styles.cardLabel, { marginTop: 16 }]}>Skin Tone</Text>
+          <View style={styles.skinToneRow}>
+            {SKIN_TONES.map((tone) => (
+              <TouchableOpacity
+                key={tone.value}
+                onPress={() =>
+                  editing
+                    ? setSkinTone(skinTone === tone.value ? null : tone.value)
+                    : null
+                }
                 style={[
-                  styles.chipText,
-                  stylePrefs.includes(pref) && styles.chipTextActive,
+                  styles.skinSwatch,
+                  { backgroundColor: tone.hex },
+                  skinTone === tone.value && styles.skinSwatchSelected,
                 ]}
               >
-                {pref}
+                {skinTone === tone.value && (
+                  <Text style={styles.skinCheck}>✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+          {skinTone && (
+            <Text style={styles.skinLabel}>
+              {SKIN_TONES.find((t) => t.value === skinTone)?.label}
+            </Text>
+          )}
+        </View>
+
+        {/* Face Scan Card */}
+        <View style={styles.card}>
+          <View style={styles.faceScanRow}>
+            <Text style={styles.faceIcon}>🤳</Text>
+            <View style={styles.faceScanContent}>
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Coming Soon</Text>
+              </View>
+              <Text style={styles.faceDesc}>
+                AI-powered personal color analysis and style recommendations
+                based on your features.
               </Text>
-            </TouchableOpacity>
-          ))}
+            </View>
+          </View>
         </View>
-      </View>
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{totalItems}</Text>
-          <Text style={styles.statLabel}>Items</Text>
+        {/* Style Preferences */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Style Preferences</Text>
+          <View style={styles.chipsRow}>
+            {STYLE_PREFERENCES.map((pref) => (
+              <TouchableOpacity
+                key={pref}
+                style={[
+                  styles.chip,
+                  stylePrefs.includes(pref) && styles.chipActive,
+                ]}
+                onPress={() => toggleStylePref(pref)}
+                disabled={!editing}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    stylePrefs.includes(pref) && styles.chipTextActive,
+                  ]}
+                >
+                  {pref}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{outfitsCreated}</Text>
-          <Text style={styles.statLabel}>Outfits</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{daysActive}</Text>
-          <Text style={styles.statLabel}>Days Active</Text>
-        </View>
-      </View>
 
-      {/* Settings */}
-      <TouchableOpacity style={styles.settingsRow}>
-        <Text style={styles.settingsIcon}>⚙️</Text>
-        <Text style={styles.settingsText}>Settings</Text>
-        <Text style={styles.settingsArrow}>›</Text>
-      </TouchableOpacity>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{totalItems}</Text>
+            <Text style={styles.statLabel}>Items</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{outfitsCreated}</Text>
+            <Text style={styles.statLabel}>Outfits</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{daysActive}</Text>
+            <Text style={styles.statLabel}>Days Active</Text>
+          </View>
+        </View>
 
-      <View style={styles.bottomSpacer} />
-    </ScrollView>
+        {/* Settings */}
+        <TouchableOpacity style={styles.settingsRow}>
+          <Text style={styles.settingsIcon}>⚙️</Text>
+          <Text style={styles.settingsText}>Settings</Text>
+          <Text style={styles.settingsArrow}>›</Text>
+        </TouchableOpacity>
+
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

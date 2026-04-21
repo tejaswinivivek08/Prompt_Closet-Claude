@@ -14,6 +14,7 @@ import {
   Easing,
   Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNetwork } from "../../contexts/NetworkContext";
 import { supabase } from "../../lib/supabase";
@@ -494,115 +495,117 @@ export default function MagicBarScreen({ navigation }: { navigation: any }) {
   // ============================================================
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {/* Large serif heading */}
-        <Text style={styles.heading}>What do you want to wear?</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Large serif heading */}
+          <Text style={styles.heading}>What do you want to wear?</Text>
 
-        {/* Offline Banner */}
-        {!isConnected && (
-          <View style={styles.offlineBanner}>
-            <Text style={styles.offlineBannerIcon}>📵</Text>
-            <Text style={styles.offlineBannerText}>
-              Magic Bar requires an internet connection to style your outfits.
-            </Text>
+          {/* Offline Banner */}
+          {!isConnected && (
+            <View style={styles.offlineBanner}>
+              <Text style={styles.offlineBannerIcon}>📵</Text>
+              <Text style={styles.offlineBannerText}>
+                Magic Bar requires an internet connection to style your outfits.
+              </Text>
+            </View>
+          )}
+
+          {/* Text input */}
+          <View style={styles.inputSection}>
+            <View style={styles.inputWrap}>
+              <TextInput
+                ref={inputRef}
+                style={styles.input}
+                value={query}
+                onChangeText={setQuery}
+                placeholder={INPUT_PLACEHOLDERS[placeholderIndex]}
+                placeholderTextColor="#A0978E"
+                multiline
+                autoFocus
+                returnKeyType="default"
+                blurOnSubmit={false}
+              />
+            </View>
+
+            {/* Style Me button */}
+            <TouchableOpacity
+              style={[
+                styles.styleButton,
+                (loading || !isConnected) && styles.styleButtonDisabled,
+              ]}
+              onPress={handleSearch}
+              disabled={loading || !query.trim() || !isConnected}
+            >
+              <Text style={styles.styleButtonText}>Style Me</Text>
+            </TouchableOpacity>
           </View>
-        )}
 
-        {/* Text input */}
-        <View style={styles.inputSection}>
-          <View style={styles.inputWrap}>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={query}
-              onChangeText={setQuery}
-              placeholder={INPUT_PLACEHOLDERS[placeholderIndex]}
-              placeholderTextColor="#A0978E"
-              multiline
-              autoFocus
-              returnKeyType="default"
-              blurOnSubmit={false}
-            />
-          </View>
+          {/* Quick prompt chips */}
+          {!hasSearched && (
+            <View style={styles.quickSection}>
+              <Text style={styles.quickLabel}>Try saying...</Text>
+              <View style={styles.chipRow}>
+                {QUICK_PROMPTS.map((prompt) => (
+                  <TouchableOpacity
+                    key={prompt}
+                    style={styles.chip}
+                    onPress={() => handleQuickPrompt(prompt)}
+                  >
+                    <Text style={styles.chipText}>{prompt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
-          {/* Style Me button */}
-          <TouchableOpacity
-            style={[
-              styles.styleButton,
-              (loading || !isConnected) && styles.styleButtonDisabled,
-            ]}
-            onPress={handleSearch}
-            disabled={loading || !query.trim() || !isConnected}
-          >
-            <Text style={styles.styleButtonText}>Style Me</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Loading state */}
+          {loading && <LoadingState />}
 
-        {/* Quick prompt chips */}
-        {!hasSearched && (
-          <View style={styles.quickSection}>
-            <Text style={styles.quickLabel}>Try saying...</Text>
-            <View style={styles.chipRow}>
-              {QUICK_PROMPTS.map((prompt) => (
+          {/* Error state */}
+          {error && !loading && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorIcon}>hmm...</Text>
+              <Text style={styles.errorText}>{error}</Text>
+              {error.includes("closet") && (
                 <TouchableOpacity
-                  key={prompt}
-                  style={styles.chip}
-                  onPress={() => handleQuickPrompt(prompt)}
+                  style={styles.addItemsButton}
+                  onPress={() => navigation.navigate("AddItem")}
                 >
-                  <Text style={styles.chipText}>{prompt}</Text>
+                  <Text style={styles.addItemsButtonText}>
+                    Add items to closet
+                  </Text>
                 </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Results - Outfit cards */}
+          {!loading && outfits.length > 0 && (
+            <View style={styles.resultsSection}>
+              <Text style={styles.resultsLabel}>
+                {outfits.length} outfit{outfits.length !== 1 ? "s" : ""} for you
+              </Text>
+              {outfits.map((outfit, index) => (
+                <OutfitCard
+                  key={`${outfit.outfit_name}-${index}`}
+                  outfit={outfit}
+                  items={allItems}
+                  onSave={handleSaveOutfit}
+                  saving={savingOutfitId === outfit.outfit_name}
+                />
               ))}
             </View>
-          </View>
-        )}
-
-        {/* Loading state */}
-        {loading && <LoadingState />}
-
-        {/* Error state */}
-        {error && !loading && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorIcon}>hmm...</Text>
-            <Text style={styles.errorText}>{error}</Text>
-            {error.includes("closet") && (
-              <TouchableOpacity
-                style={styles.addItemsButton}
-                onPress={() => navigation.navigate("AddItem")}
-              >
-                <Text style={styles.addItemsButtonText}>
-                  Add items to closet
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {/* Results - Outfit cards */}
-        {!loading && outfits.length > 0 && (
-          <View style={styles.resultsSection}>
-            <Text style={styles.resultsLabel}>
-              {outfits.length} outfit{outfits.length !== 1 ? "s" : ""} for you
-            </Text>
-            {outfits.map((outfit, index) => (
-              <OutfitCard
-                key={`${outfit.outfit_name}-${index}`}
-                outfit={outfit}
-                items={allItems}
-                onSave={handleSaveOutfit}
-                saving={savingOutfitId === outfit.outfit_name}
-              />
-            ))}
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

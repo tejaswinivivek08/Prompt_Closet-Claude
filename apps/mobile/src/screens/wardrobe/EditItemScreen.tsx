@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
 import type { ClothingCategory, Pattern, Occasion } from "../../types";
@@ -200,189 +201,191 @@ export default function EditItemScreen({
   const imageUrl = item?.image_url;
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Image Preview */}
-      {imageUrl && (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-        </View>
-      )}
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Image Preview */}
+        {imageUrl && (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.image}
+              resizeMode="cover"
+            />
+          </View>
+        )}
 
-      {/* Category */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Category</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.chipRow}>
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.chip, category === cat && styles.chipSelected]}
-                onPress={() => setCategory(cat)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    category === cat && styles.chipTextSelected,
-                  ]}
+        {/* Category */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Category</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.chipRow}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.chip, category === cat && styles.chipSelected]}
+                  onPress={() => setCategory(cat)}
                 >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </Text>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      category === cat && styles.chipTextSelected,
+                    ]}
+                  >
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Subcategory */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subcategory (optional)</Text>
+          <View style={styles.subcategoryRow}>
+            {["kurta", "saree", "blazer", "jeans", "shirt", "dress"].map(
+              (sub) => (
+                <TouchableOpacity
+                  key={sub}
+                  style={[
+                    styles.chip,
+                    subcategory === sub && styles.chipSelected,
+                  ]}
+                  onPress={() => setSubcategory(subcategory === sub ? "" : sub)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      subcategory === sub && styles.chipTextSelected,
+                    ]}
+                  >
+                    {sub.charAt(0).toUpperCase() + sub.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            )}
+          </View>
+        </View>
+
+        {/* Colors */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Colors</Text>
+          <View style={styles.colorGrid}>
+            {COLOR_SWATCHES.map(({ name, hex, border }) => (
+              <TouchableOpacity
+                key={name}
+                style={[
+                  styles.colorSwatch,
+                  { backgroundColor: hex },
+                  border && styles.colorSwatchBordered,
+                  colors.includes(name.toLowerCase()) &&
+                    styles.colorSwatchSelected,
+                ]}
+                onPress={() => toggleColor(name.toLowerCase())}
+              >
+                {colors.includes(name.toLowerCase()) && (
+                  <Text style={styles.colorCheck}>✓</Text>
+                )}
               </TouchableOpacity>
             ))}
           </View>
-        </ScrollView>
-      </View>
+        </View>
 
-      {/* Subcategory */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Subcategory (optional)</Text>
-        <View style={styles.subcategoryRow}>
-          {["kurta", "saree", "blazer", "jeans", "shirt", "dress"].map(
-            (sub) => (
+        {/* Pattern */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pattern</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.chipRow}>
+              {PATTERNS.map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  style={[styles.chip, pattern === p && styles.chipSelected]}
+                  onPress={() => setPattern(p)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      pattern === p && styles.chipTextSelected,
+                    ]}
+                  >
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Occasions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Occasions</Text>
+          <View style={styles.chipRowWrap}>
+            {OCCASIONS.map((occ) => (
               <TouchableOpacity
-                key={sub}
+                key={occ}
                 style={[
                   styles.chip,
-                  subcategory === sub && styles.chipSelected,
+                  occasions.includes(occ) && styles.chipSelected,
                 ]}
-                onPress={() => setSubcategory(subcategory === sub ? "" : sub)}
+                onPress={() => toggleOccasion(occ)}
               >
                 <Text
                   style={[
                     styles.chipText,
-                    subcategory === sub && styles.chipTextSelected,
+                    occasions.includes(occ) && styles.chipTextSelected,
                   ]}
                 >
-                  {sub.charAt(0).toUpperCase() + sub.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ),
-          )}
-        </View>
-      </View>
-
-      {/* Colors */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Colors</Text>
-        <View style={styles.colorGrid}>
-          {COLOR_SWATCHES.map(({ name, hex, border }) => (
-            <TouchableOpacity
-              key={name}
-              style={[
-                styles.colorSwatch,
-                { backgroundColor: hex },
-                border && styles.colorSwatchBordered,
-                colors.includes(name.toLowerCase()) &&
-                  styles.colorSwatchSelected,
-              ]}
-              onPress={() => toggleColor(name.toLowerCase())}
-            >
-              {colors.includes(name.toLowerCase()) && (
-                <Text style={styles.colorCheck}>✓</Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Pattern */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pattern</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.chipRow}>
-            {PATTERNS.map((p) => (
-              <TouchableOpacity
-                key={p}
-                style={[styles.chip, pattern === p && styles.chipSelected]}
-                onPress={() => setPattern(p)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    pattern === p && styles.chipTextSelected,
-                  ]}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {occ.charAt(0).toUpperCase() + occ.slice(1)}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
-        </ScrollView>
-      </View>
+        </View>
 
-      {/* Occasions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Occasions</Text>
-        <View style={styles.chipRowWrap}>
-          {OCCASIONS.map((occ) => (
-            <TouchableOpacity
-              key={occ}
-              style={[
-                styles.chip,
-                occasions.includes(occ) && styles.chipSelected,
-              ]}
-              onPress={() => toggleOccasion(occ)}
-            >
-              <Text
+        {/* Formality Score */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Formality</Text>
+          <View style={styles.formalityContainer}>
+            {[1, 2, 3, 4, 5].map((score) => (
+              <TouchableOpacity
+                key={score}
                 style={[
-                  styles.chipText,
-                  occasions.includes(occ) && styles.chipTextSelected,
+                  styles.formalityStar,
+                  formalityScore >= score && styles.formalityStarSelected,
                 ]}
+                onPress={() => setFormalityScore(score as 1 | 2 | 3 | 4 | 5)}
               >
-                {occ.charAt(0).toUpperCase() + occ.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.formalityStarText,
+                    formalityScore >= score && styles.formalityStarTextSelected,
+                  ]}
+                >
+                  {score}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.formalityLabels}>
+            <Text style={styles.formalityLabel}>Casual</Text>
+            <Text style={styles.formalityLabel}>Formal</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Formality Score */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Formality</Text>
-        <View style={styles.formalityContainer}>
-          {[1, 2, 3, 4, 5].map((score) => (
-            <TouchableOpacity
-              key={score}
-              style={[
-                styles.formalityStar,
-                formalityScore >= score && styles.formalityStarSelected,
-              ]}
-              onPress={() => setFormalityScore(score as 1 | 2 | 3 | 4 | 5)}
-            >
-              <Text
-                style={[
-                  styles.formalityStarText,
-                  formalityScore >= score && styles.formalityStarTextSelected,
-                ]}
-              >
-                {score}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={styles.formalityLabels}>
-          <Text style={styles.formalityLabel}>Casual</Text>
-          <Text style={styles.formalityLabel}>Formal</Text>
-        </View>
-      </View>
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          <Text style={styles.saveButtonText}>
+            {saving ? "Saving..." : "Save Changes"}
+          </Text>
+        </TouchableOpacity>
 
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={saving}
-      >
-        <Text style={styles.saveButtonText}>
-          {saving ? "Saving..." : "Save Changes"}
-        </Text>
-      </TouchableOpacity>
-
-      <View style={styles.bottomSpacer} />
-    </ScrollView>
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

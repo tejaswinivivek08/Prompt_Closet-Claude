@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Image,
   Animated,
-  Dimensions,
 } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -286,11 +285,11 @@ const tabStyles = StyleSheet.create({
     alignItems: "center",
   },
   tabIcon: {
-    width: 28,
-    height: 28,
+    width: 100,
+    height: 100,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#888780",
     fontWeight: "500",
   },
@@ -298,7 +297,7 @@ const tabStyles = StyleSheet.create({
     color: "#C9847A",
   },
   fabBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.25)",
     zIndex: 0,
   },
@@ -359,7 +358,7 @@ const tabStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowRadius: 14,
     elevation: 10,
-    marginBottom: -40,
+    marginBottom: -62,
   },
   fabTouchInner: {
     width: 62,
