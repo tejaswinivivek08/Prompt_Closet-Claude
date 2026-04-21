@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,14 +6,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  RefreshControl,
   TextInput,
   ActivityIndicator,
   Dimensions,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase, deleteItem } from "../../lib/supabase";
 import { semanticSearch } from "../../services/embeddingService";
@@ -66,6 +65,8 @@ const CARD_GAP = 4;
 const NUM_COLUMNS = 3;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_WIDTH = (SCREEN_WIDTH - CARD_GAP * (NUM_COLUMNS + 1)) / NUM_COLUMNS;
+const RECENT_SEARCHES_KEY = "recent_searches";
+const MAX_RECENT = 5;
 
 // ============================================================
 // HELPERS
@@ -154,64 +155,6 @@ function ItemCard({ item, similarity, onPress, onLongPress }: ItemCardProps) {
 }
 
 // ============================================================
-// SEARCH BAR
-// ============================================================
-
-interface SearchBarProps {
-  value: string;
-  onChange: (v: string) => void;
-  onSubmit: () => void;
-  loading: boolean;
-}
-
-function SearchBar({ value, onChange, onSubmit, loading }: SearchBarProps) {
-  return (
-    <View style={styles.searchContainer}>
-      <View style={styles.searchInputWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          value={value}
-          onChangeText={onChange}
-          placeholder="Describe what you're looking for..."
-          placeholderTextColor="#A0978E"
-          returnKeyType="search"
-          onSubmitEditing={onSubmit}
-          editable={!loading}
-        />
-        {loading && (
-          <ActivityIndicator
-            size="small"
-            color={COLORS.primary}
-            style={{ marginRight: 8 }}
-          />
-        )}
-      </View>
-    </View>
-  );
-}
-
-// ============================================================
-// EMPTY STATE
-// ============================================================
-
-function EmptyState({ hasSearched }: { hasSearched: boolean }) {
-  return (
-    <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>{hasSearched ? "🔍" : "👗"}</Text>
-      <Text style={styles.emptyTitle}>
-        {hasSearched ? "No items found" : "Search your closet"}
-      </Text>
-      <Text style={styles.emptySubtitle}>
-        {hasSearched
-          ? "Try a different description"
-          : "Search your closet by describing what you're looking for"}
-      </Text>
-    </View>
-  );
-}
-
-// ============================================================
 // MAIN SCREEN
 // ============================================================
 
@@ -221,58 +164,120 @@ interface SearchScreenProps {
 
 export default function SearchScreen({ navigation }: SearchScreenProps) {
   const { user } = useAuth();
+  const inputRef = useRef<TextInput>(null);
 
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  // Semantic search
-  const handleSearch = useCallback(async () => {
-    const query = searchQuery.trim();
-    if (!query || !user) return;
-
-    setSearchLoading(true);
-    setHasSearched(true);
-    try {
-      const results = await semanticSearch(user.id, query, 20, 0.3);
-      setSearchResults(results);
-    } catch (err) {
-      console.error("[SearchScreen] Search error:", err);
-      Alert.alert("Search failed", "Please try again.");
-    } finally {
-      setSearchLoading(false);
-    }
-  }, [searchQuery, user]);
-
-  const handleClearSearch = useCallback(() => {
-    setSearchQuery("");
-    setSearchResults(null);
-    setHasSearched(false);
+  // Load recent searches
+  useEffect(() => {
+    AsyncStorage.getItem(RECENT_SEARCHES_KEY)
+      .then((val) => {
+        if (val) setRecentSearches(JSON.parse(val));
+      })
+      .catch(() => {});
   }, []);
 
-  const handleQueryChange = useCallback(
-    (v: string) => {
-      setSearchQuery(v);
-      if (!v.trim()) handleClearSearch();
+  // Save a search to recent
+  const saveRecentSearch = useCallback(
+    async (query: string) => {
+      const trimmed = query.trim();
+      if (!trimmed) return;
+      const updated = [
+        trimmed,
+        ...recentSearches.filter((s) => s !== trimmed),
+      ].slice(0, MAX_RECENT);
+      setRecentSearches(updated);
+      try {
+        await AsyncStorage.setItem(
+          RECENT_SEARCHES_KEY,
+          JSON.stringify(updated),
+        );
+      } catch {}
     },
-    [handleClearSearch],
+    [recentSearches],
+  );
+
+  // Clear a single recent search
+  const clearRecentSearch = useCallback(
+    async (q: string) => {
+      const updated = recentSearches.filter((s) => s !== q);
+      setRecentSearches(updated);
+      try {
+        await AsyncStorage.setItem(
+          RECENT_SEARCHES_KEY,
+          JSON.stringify(updated),
+        );
+      } catch {}
+    },
+    [recentSearches],
+  );
+
+  // Clear all recent searches
+  const clearAllRecent = useCallback(async () => {
+    setRecentSearches([]);
+    try {
+      await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
+    } catch {}
+  }, []);
+
+  // Run search
+  const runSearch = useCallback(
+    async (query: string) => {
+      const trimmed = query.trim();
+      if (!trimmed || !user) return;
+
+      setSearchLoading(true);
+      try {
+        const results = await semanticSearch(user.id, trimmed, 20, 0.3);
+        setSearchResults(results);
+        if (results.length > 0) {
+          saveRecentSearch(trimmed);
+        }
+      } catch (err) {
+        console.error("[SearchScreen] Search error:", err);
+        Alert.alert("Search failed", "Please try again.");
+      } finally {
+        setSearchLoading(false);
+      }
+    },
+    [user, saveRecentSearch],
+  );
+
+  const handleQueryChange = useCallback((v: string) => {
+    setSearchQuery(v);
+    if (!v.trim()) {
+      setSearchResults(null);
+    }
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    runSearch(searchQuery);
+  }, [searchQuery, runSearch]);
+
+  const handleRecentPress = useCallback(
+    (q: string) => {
+      setSearchQuery(q);
+      runSearch(q);
+    },
+    [runSearch],
   );
 
   // Build list data from search results
   const listData = searchResults ?? [];
+  const hasQuery = searchQuery.trim().length > 0;
 
   const renderItem = useCallback(
     ({ item, index }: { item: SearchResult; index: number }) => {
       const wardrobeItem = item.item;
       if (!wardrobeItem) return null;
 
-      const displayName = getDisplayName(wardrobeItem as WardrobeItem);
-
       const handleLongPress = () => {
-        Alert.alert(`Delete ${displayName}?`, "This cannot be undone.", [
+        Alert.alert(`Delete?`, "This cannot be undone.", [
           { text: "Cancel", style: "cancel" },
           {
             text: "Delete",
@@ -319,40 +324,112 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Search</Text>
+      {/* Large heading */}
+      <View style={styles.headingSection}>
+        <Text style={styles.heading}>Search</Text>
+        <Text style={styles.subheading}>Find anything in your closet</Text>
       </View>
 
-      {/* Search bar */}
-      <SearchBar
-        value={searchQuery}
-        onChange={handleQueryChange}
-        onSubmit={handleSearch}
-        loading={searchLoading}
-      />
+      {/* Search input */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchInputWrap}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            ref={inputRef}
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={handleQueryChange}
+            placeholder="Describe what you're looking for..."
+            placeholderTextColor="#A0978E"
+            returnKeyType="search"
+            onSubmitEditing={handleSubmit}
+            autoFocus={false}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {searchLoading && (
+            <ActivityIndicator size="small" color={COLORS.primary} />
+          )}
+          {searchQuery.length > 0 && !searchLoading && (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery("");
+                setSearchResults(null);
+              }}
+              style={{ marginLeft: 4 }}
+            >
+              <Text style={{ fontSize: 16 }}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Recent searches — shown when no query */}
+      {!hasQuery && recentSearches.length > 0 && (
+        <View style={styles.recentSection}>
+          <View style={styles.recentHeader}>
+            <Text style={styles.recentTitle}>Recent</Text>
+            <TouchableOpacity onPress={clearAllRecent}>
+              <Text style={styles.clearAllText}>Clear all</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.recentChips}>
+            {recentSearches.map((q) => (
+              <View key={q} style={styles.recentChipWrap}>
+                <TouchableOpacity
+                  style={styles.recentChip}
+                  onPress={() => handleRecentPress(q)}
+                >
+                  <Text style={styles.recentChipText}>{q}</Text>
+                  <TouchableOpacity
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    onPress={() => clearRecentSearch(q)}
+                  >
+                    <Text style={styles.recentChipClear}>✕</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Empty state — no query, no recent */}
+      {!hasQuery && recentSearches.length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>🔍</Text>
+          <Text style={styles.emptyTitle}>Search your closet</Text>
+          <Text style={styles.emptySubtitle}>
+            Describe what you're looking for —{"\n"}colors, style, occasion, or
+            event
+          </Text>
+        </View>
+      )}
+
+      {/* Loading skeletons */}
+      {hasQuery && searchLoading && (
+        <View style={styles.gridContainer}>
+          <View style={styles.loadingGrid}>
+            {Array.from({ length: 9 }).map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  width: CARD_WIDTH,
+                  marginLeft: i % NUM_COLUMNS === 0 ? CARD_GAP : CARD_GAP / 2,
+                  marginRight: CARD_GAP / 2,
+                }}
+              >
+                <View style={styles.skeletonCard}>
+                  <View style={styles.skeletonImage} />
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Results grid */}
-      {searchLoading ? (
-        <View style={styles.loadingGrid}>
-          {Array.from({ length: 9 }).map((_, i) => (
-            <View
-              key={i}
-              style={{
-                width: CARD_WIDTH,
-                marginLeft: i % NUM_COLUMNS === 0 ? CARD_GAP : CARD_GAP / 2,
-                marginRight: CARD_GAP / 2,
-              }}
-            >
-              <View style={styles.skeletonCard}>
-                <View style={styles.skeletonImage} />
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : listData.length === 0 ? (
-        <EmptyState hasSearched={hasSearched && !searchLoading} />
-      ) : (
+      {hasQuery && !searchLoading && listData.length > 0 && (
         <FlatList
           data={listData}
           renderItem={renderItem}
@@ -362,8 +439,20 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
           getItemLayout={getItemLayout}
           contentContainerStyle={styles.gridContent}
           columnWrapperStyle={styles.gridRow}
+          showsVerticalScrollIndicator={false}
           ListFooterComponent={<View style={{ height: 100 }} />}
         />
+      )}
+
+      {/* No results */}
+      {hasQuery && !searchLoading && listData.length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>😕</Text>
+          <Text style={styles.emptyTitle}>No items found</Text>
+          <Text style={styles.emptySubtitle}>
+            Try different words or add more items to your closet
+          </Text>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -378,19 +467,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    paddingHorizontal: 16,
+  headingSection: {
+    paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 4,
   },
-  title: {
-    fontSize: 28,
+  heading: {
+    fontSize: 32,
     fontWeight: "700",
     color: COLORS.text,
     letterSpacing: -0.5,
   },
-  searchContainer: {
+  subheading: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  searchSection: {
     paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   searchInputWrap: {
@@ -399,18 +494,69 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 50,
   },
   searchIcon: {
     fontSize: 16,
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
     fontSize: 16,
     color: COLORS.text,
+    paddingVertical: 0,
+  },
+  recentSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  recentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  recentTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  clearAllText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: "500",
+  },
+  recentChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  recentChipWrap: {},
+  recentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 20,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  recentChipText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  recentChipClear: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  gridContainer: {
+    flex: 1,
   },
   gridContent: {
     paddingHorizontal: CARD_GAP / 2,
@@ -418,6 +564,24 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     justifyContent: "flex-start",
+  },
+  loadingGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: CARD_GAP / 2,
+    paddingTop: 8,
+  },
+  skeletonCard: {
+    width: CARD_WIDTH,
+    aspectRatio: "4 / 5",
+    borderRadius: 8,
+    marginVertical: CARD_GAP / 2,
+    overflow: "hidden",
+  },
+  skeletonImage: {
+    flex: 1,
+    backgroundColor: "#E8E0D8",
+    borderRadius: 8,
   },
   card: {
     width: CARD_WIDTH,
@@ -488,32 +652,14 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
   },
-  loadingGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: CARD_GAP / 2,
-  },
-  skeletonCard: {
-    width: CARD_WIDTH,
-    aspectRatio: "4 / 5",
-    borderRadius: 8,
-    marginVertical: CARD_GAP / 2,
-    overflow: "hidden",
-  },
-  skeletonImage: {
-    flex: 1,
-    backgroundColor: "#E8E0D8",
-    borderRadius: 8,
-  },
   emptyState: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
-    paddingBottom: 80,
   },
   emptyIcon: {
-    fontSize: 64,
+    fontSize: 56,
     marginBottom: 16,
   },
   emptyTitle: {
