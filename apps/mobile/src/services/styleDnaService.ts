@@ -49,7 +49,7 @@ const EMBEDDING_DIM = 512;
 const K_MIN = 2;
 const K_MAX = 10;
 const K_DEFAULT = 5;
-const MIN_ITEMS_FOR_CLUSTERING = 30;
+const MIN_ITEMS_FOR_CLUSTERING = 5;
 const MAX_ITEMS = 500; // cap for performance
 
 // ============================================================

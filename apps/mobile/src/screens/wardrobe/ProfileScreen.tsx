@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -106,6 +107,7 @@ export default function ProfileScreen() {
     setSaving(true);
     await supabase.from("profiles").upsert({
       id: user.id,
+      username: editName,
       full_name: editName,
       skin_tone_palette: skinTone,
       body_measurements: { height: editHeight, weight: editWeight },
@@ -147,16 +149,13 @@ export default function ProfileScreen() {
           </View>
           {editing ? (
             <View style={styles.editNameRow}>
-              <TouchableOpacity style={styles.editInput} onPress={() => {}}>
-                <Text
-                  style={[
-                    styles.editInputText,
-                    !editName && styles.placeholder,
-                  ]}
-                >
-                  {editName || "Your name"}
-                </Text>
-              </TouchableOpacity>
+              <TextInput
+                style={styles.editInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Your name"
+                placeholderTextColor="#A0978E"
+              />
               <TouchableOpacity
                 style={styles.editSaveBtn}
                 onPress={handleSave}
@@ -189,30 +188,48 @@ export default function ProfileScreen() {
           <View style={styles.metricsRow}>
             <View style={styles.metric}>
               <Text style={styles.metricLabel}>Height</Text>
-              <TouchableOpacity style={styles.metricInput} onPress={() => {}}>
+              {editing ? (
+                <TextInput
+                  style={[styles.metricValue, styles.metricTextInput]}
+                  value={editHeight}
+                  onChangeText={setEditHeight}
+                  placeholder="cm"
+                  placeholderTextColor="#A0978E"
+                  keyboardType="numeric"
+                />
+              ) : (
                 <Text
                   style={[
                     styles.metricValue,
                     !editHeight && styles.placeholder,
                   ]}
                 >
-                  {editing ? editHeight || "cm" : height || "— cm"}
+                  {height || "— cm"}
                 </Text>
-              </TouchableOpacity>
+              )}
             </View>
             <View style={styles.metricDivider} />
             <View style={styles.metric}>
               <Text style={styles.metricLabel}>Weight</Text>
-              <TouchableOpacity style={styles.metricInput} onPress={() => {}}>
+              {editing ? (
+                <TextInput
+                  style={[styles.metricValue, styles.metricTextInput]}
+                  value={editWeight}
+                  onChangeText={setEditWeight}
+                  placeholder="kg"
+                  placeholderTextColor="#A0978E"
+                  keyboardType="numeric"
+                />
+              ) : (
                 <Text
                   style={[
                     styles.metricValue,
                     !editWeight && styles.placeholder,
                   ]}
                 >
-                  {editing ? editWeight || "kg" : weight || "— kg"}
+                  {weight || "— kg"}
                 </Text>
-              </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -455,6 +472,17 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     color: "#2B2B2B",
+  },
+  metricTextInput: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#2B2B2B",
+    backgroundColor: "#F5F0EA",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    textAlign: "center",
+    minWidth: 80,
   },
   skinToneRow: {
     flexDirection: "row",

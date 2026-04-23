@@ -13,6 +13,10 @@ import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
 import type { ClothingCategory, Pattern, Occasion } from "../../types";
 import type { ClothingTags } from "../../services/taggingService";
+import {
+  generateImageEmbedding,
+  saveEmbedding,
+} from "../../services/embeddingService";
 
 interface ReviewTagsScreenProps {
   navigation: any;
@@ -151,6 +155,15 @@ export default function ReviewTagsScreen({
         .single();
 
       if (error) throw error;
+
+      // Generate and save CLIP embedding for semantic search
+      try {
+        const { embedding } = await generateImageEmbedding(imageUrl);
+        await saveEmbedding(data.id, user.id, embedding);
+      } catch (embErr) {
+        // Non-fatal: item is saved, embedding can be regenerated later
+        console.warn("[ReviewTags] Failed to save embedding:", embErr);
+      }
 
       Alert.alert("Saved!", "Your item has been added to your closet.", [
         { text: "OK", onPress: () => navigation.navigate("MainTabs") },

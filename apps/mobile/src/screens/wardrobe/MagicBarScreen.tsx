@@ -160,10 +160,25 @@ interface OutfitCardProps {
   outfit: OutfitSuggestion;
   items: OutfitItem[];
   onSave: (outfit: OutfitSuggestion, items: OutfitItem[]) => void;
+  onAccept: (outfit: OutfitSuggestion) => void;
+  onReject: (outfit: OutfitSuggestion) => void;
   saving: boolean;
+  queryText: string;
+  isAccepted: boolean;
+  isRejected: boolean;
 }
 
-function OutfitCard({ outfit, items, onSave, saving }: OutfitCardProps) {
+function OutfitCard({
+  outfit,
+  items,
+  onSave,
+  onAccept,
+  onReject,
+  saving,
+  queryText,
+  isAccepted,
+  isRejected,
+}: OutfitCardProps) {
   const occasionColor =
     OCCASION_COLORS[outfit.occasion_fit.toLowerCase()] || COLORS.primary;
 
@@ -236,16 +251,35 @@ function OutfitCard({ outfit, items, onSave, saving }: OutfitCardProps) {
         </Text>
       </View>
 
-      {/* Save button */}
-      <TouchableOpacity
-        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-        onPress={() => onSave(outfit, outfitItems)}
-        disabled={saving}
-      >
-        <Text style={styles.saveButtonText}>
-          {saving ? "Saving..." : "Save Outfit"}
-        </Text>
-      </TouchableOpacity>
+      {/* Accept / Reject feedback */}
+      {isRejected ? (
+        <View style={styles.feedbackDoneContainer}>
+          <Text style={styles.feedbackDoneText}>Dismissed</Text>
+        </View>
+      ) : isAccepted ? (
+        <View style={styles.feedbackDoneContainer}>
+          <Text style={styles.feedbackDoneText}>Saved!</Text>
+        </View>
+      ) : (
+        <View style={styles.feedbackRow}>
+          <TouchableOpacity
+            style={[styles.rejectButton]}
+            onPress={() => onReject(outfit)}
+            disabled={saving}
+          >
+            <Text style={styles.rejectButtonText}>✕ Not for me</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.acceptButton, saving && styles.saveButtonDisabled]}
+            onPress={() => onAccept(outfit)}
+            disabled={saving}
+          >
+            <Text style={styles.acceptButtonText}>
+              {saving ? "..." : "✓ Save Outfit"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -264,6 +298,12 @@ export default function MagicBarScreen({ navigation }: { navigation: any }) {
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savingOutfitId, setSavingOutfitId] = useState<string | null>(null);
+  const [acceptedOutfits, setAcceptedOutfits] = useState<Set<string>>(
+    new Set(),
+  );
+  const [rejectedOutfits, setRejectedOutfits] = useState<Set<string>>(
+    new Set(),
+  );
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   const inputRef = useRef<TextInput>(null);
@@ -480,6 +520,62 @@ export default function MagicBarScreen({ navigation }: { navigation: any }) {
   }
 
   // ============================================================
+  // HANDLE FEEDBACK (ACCEPT / REJECT)
+  // ============================================================
+
+  async function handleAcceptOutfit(outfit: OutfitSuggestion) {
+    if (!user) return;
+    setSavingOutfitId(outfit.outfit_name);
+    try {
+      // Record feedback
+      await supabase.from("outfit_feedback").insert({
+        user_id: user.id,
+        query_text: query,
+        outfit_name: outfit.outfit_name,
+        item_ids: outfit.item_ids,
+        feedback: "accepted",
+      });
+      // Also save outfit
+      const { error: saveError } = await supabase.from("outfits").insert({
+        user_id: user.id,
+        name: outfit.outfit_name,
+        item_ids: outfit.item_ids,
+        occasion: outfit.occasion_fit,
+        notes: outfit.styling_tip,
+        ai_generated: true,
+      });
+      if (saveError) throw saveError;
+      setAcceptedOutfits((prev) => new Set([...prev, outfit.outfit_name]));
+      Alert.alert(
+        "Outfit Saved!",
+        `"${outfit.outfit_name}" has been added to your Style collection.`,
+        [{ text: "OK" }],
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      Alert.alert("Save Failed", `Could not save outfit: ${message}`);
+    } finally {
+      setSavingOutfitId(null);
+    }
+  }
+
+  async function handleRejectOutfit(outfit: OutfitSuggestion) {
+    if (!user) return;
+    try {
+      await supabase.from("outfit_feedback").insert({
+        user_id: user.id,
+        query_text: query,
+        outfit_name: outfit.outfit_name,
+        item_ids: outfit.item_ids,
+        feedback: "rejected",
+      });
+      setRejectedOutfits((prev) => new Set([...prev, outfit.outfit_name]));
+    } catch (err) {
+      console.warn("[MagicBar] Failed to record reject feedback:", err);
+    }
+  }
+
+  // ============================================================
   // HANDLE QUICK PROMPT
   // ============================================================
 
@@ -598,7 +694,12 @@ export default function MagicBarScreen({ navigation }: { navigation: any }) {
                   outfit={outfit}
                   items={allItems}
                   onSave={handleSaveOutfit}
+                  onAccept={handleAcceptOutfit}
+                  onReject={handleRejectOutfit}
                   saving={savingOutfitId === outfit.outfit_name}
+                  queryText={query}
+                  isAccepted={acceptedOutfits.has(outfit.outfit_name)}
+                  isRejected={rejectedOutfits.has(outfit.outfit_name)}
                 />
               ))}
             </View>
@@ -962,5 +1063,48 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "600",
+  },
+  feedbackRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+  },
+  acceptButton: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  acceptButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  rejectButton: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  rejectButtonText: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  feedbackDoneContainer: {
+    marginTop: 16,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  feedbackDoneText: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+    fontWeight: "500",
   },
 });

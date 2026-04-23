@@ -20,6 +20,7 @@ import { useNetwork } from "../../contexts/NetworkContext";
 import { supabase, deleteItem } from "../../lib/supabase";
 import { semanticSearch } from "../../services/embeddingService";
 import type { SearchResult } from "../../services/embeddingService";
+import { getNeglectedItems } from "../../services/deadWeightService";
 
 // ============================================================
 // TYPES
@@ -37,6 +38,7 @@ interface WardrobeItem {
   formality_score: number;
   suggested_name?: string;
   wear_count: number;
+  worn_last_at: string | null;
   created_at: string;
 }
 
@@ -160,9 +162,16 @@ interface ItemCardProps {
   similarity?: number;
   onPress: () => void;
   onLongPress: () => void;
+  neglectBadge?: boolean;
 }
 
-function ItemCard({ item, similarity, onPress, onLongPress }: ItemCardProps) {
+function ItemCard({
+  item,
+  similarity,
+  onPress,
+  onLongPress,
+  neglectBadge,
+}: ItemCardProps) {
   const displayName = getDisplayName(item);
   const topOccasions = item.occasions.slice(0, 2);
 
@@ -182,6 +191,11 @@ function ItemCard({ item, similarity, onPress, onLongPress }: ItemCardProps) {
       {similarity !== undefined && (
         <View style={styles.matchBadge}>
           <Text style={styles.matchText}>{Math.round(similarity * 100)}%</Text>
+        </View>
+      )}
+      {neglectBadge && (
+        <View style={styles.neglectBadge}>
+          <Text style={styles.neglectBadgeText}>😴</Text>
         </View>
       )}
       <View style={styles.cardOverlay}>
@@ -341,6 +355,7 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
   const [selectedFilter, setSelectedFilter] = useState<CategoryFilter>("All");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [neglectedIds, setNeglectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
@@ -385,6 +400,10 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
     if (user) {
       setLoading(true);
       fetchItems(0, false).finally(() => setLoading(false));
+      // Load neglected item IDs
+      getNeglectedItems(user.id).then((neglected) => {
+        setNeglectedIds(new Set(neglected.map((n) => n.id)));
+      });
     }
   }, [user, fetchItems]);
 
@@ -396,6 +415,8 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
     setSearchResults(null);
     setSearchQuery("");
     await fetchItems(0, false);
+    const neglected = await getNeglectedItems(user.id);
+    setNeglectedIds(new Set(neglected.map((n) => n.id)));
     setRefreshing(false);
   }, [user, fetchItems]);
 
@@ -486,6 +507,7 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
           <ItemCard
             item={item}
             similarity={searchResult?.similarity}
+            neglectBadge={neglectedIds.has(item.id)}
             onPress={() =>
               navigation.navigate("ItemDetail", {
                 itemId: item.id,
@@ -497,7 +519,7 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
         </View>
       );
     },
-    [searchResults, navigation, user],
+    [searchResults, navigation, user, neglectedIds],
   );
 
   const renderSkeleton = () => (
@@ -761,6 +783,18 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#FFFFFF",
     fontWeight: "700",
+  },
+  neglectBadge: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  neglectBadgeText: {
+    fontSize: 11,
   },
   skeletonGrid: {
     flexDirection: "row",
