@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Image,
@@ -11,8 +11,11 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase, deleteItem } from "../../lib/supabase";
+import { uploadWardrobeImage } from "../../services/storageService";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -55,6 +58,7 @@ export default function ItemDetailScreen({
   const [loading, setLoading] = React.useState(true);
   const [item, setItem] = React.useState<any>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [changingPhoto, setChangingPhoto] = useState(false);
 
   React.useEffect(() => {
     async function fetchItem() {
@@ -68,6 +72,59 @@ export default function ItemDetailScreen({
     }
     fetchItem();
   }, [itemId]);
+
+  const handleChangePhoto = async () => {
+    if (!user) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Photo library access required.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setChangingPhoto(true);
+    try {
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      const newUrl = await uploadWardrobeImage(
+        user.id,
+        manipulated.uri,
+        () => {},
+      );
+      // Update wardrobe_items with new cover photo
+      const currentUrls = item.image_urls ?? [item.image_url];
+      const newUrls = [
+        newUrl,
+        ...currentUrls.filter((u: string) => u !== imageUrl),
+      ];
+      await supabase
+        .from("wardrobe_items")
+        .update({ image_url: newUrl, image_urls: newUrls })
+        .eq("id", itemId);
+      // Re-fetch item and update imageUrl shown
+      const { data } = await supabase
+        .from("wardrobe_items")
+        .select("*")
+        .eq("id", itemId)
+        .single();
+      setItem(data);
+      // Navigate to a fresh ItemDetail with the new URL
+      navigation.replace("ItemDetail", { itemId, imageUrl: newUrl });
+    } catch {
+      Alert.alert("Error", "Failed to change photo.");
+    } finally {
+      setChangingPhoto(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!user) return;
@@ -225,6 +282,18 @@ export default function ItemDetailScreen({
           )}
 
           <TouchableOpacity
+            style={styles.changePhotoButton}
+            onPress={handleChangePhoto}
+            disabled={changingPhoto}
+          >
+            {changingPhoto ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.changePhotoButtonText}>📷 Change Photo</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.editTagsButton}
             onPress={() => navigation.navigate("EditItem", { itemId: item.id })}
           >
@@ -246,6 +315,12 @@ export default function ItemDetailScreen({
       </ScrollView>
 
       {deleting && (
+        <View style={styles.deletingOverlay}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
+
+      {changingPhoto && (
         <View style={styles.deletingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
         </View>
@@ -431,6 +506,18 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   editTagsButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  changePhotoButton: {
+    backgroundColor: "#6B7B8A",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  changePhotoButtonText: {
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "600",

@@ -18,6 +18,8 @@ import {
 } from "../../services/storageService";
 import { analyzeClothingItem } from "../../services/taggingService";
 
+const MAX_PHOTOS = 4;
+
 interface AddItemScreenProps {
   navigation: any;
   route: any;
@@ -114,6 +116,14 @@ function generateMockTags(category = "top") {
 
 type Stage = "idle" | "analyzing" | "done" | "error";
 
+interface PhotoEntry {
+  uri: string;
+  uploading: boolean;
+  uploadedUrl?: string;
+  analyzed?: boolean;
+  tags?: ReturnType<typeof generateMockTags>;
+}
+
 export default function AddItemScreen({
   navigation,
   route,
@@ -121,6 +131,7 @@ export default function AddItemScreen({
   const { user } = useAuth();
   const { isConnected } = useNetwork();
   const [stage, setStage] = useState<Stage>("idle");
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
@@ -161,7 +172,7 @@ export default function AddItemScreen({
       return;
     }
     try {
-      let uri: string | null = null;
+      let uris: string[] = [];
 
       if (optionId === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -176,7 +187,7 @@ export default function AddItemScreen({
           quality: 1,
         });
         if (result.canceled || !result.assets?.[0]) return;
-        uri = result.assets[0].uri;
+        uris = result.assets.map((a) => a.uri);
       } else {
         const { status } =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -189,46 +200,66 @@ export default function AddItemScreen({
           allowsEditing: true,
           aspect: [1, 1],
           quality: 1,
+          allowsMultipleSelection: true,
         });
-        if (result.canceled || !result.assets?.[0]) return;
-        uri = result.assets[0].uri;
+        if (result.canceled || !result.assets?.length) return;
+        uris = result.assets.map((a) => a.uri).slice(0, MAX_PHOTOS);
       }
 
-      await processImage(uri);
+      await processImages(uris);
     } catch {
       setErrorMessage("Failed to select image. Please try again.");
       setStage("error");
     }
   };
 
-  const processImage = async (uri: string) => {
+  const processImages = async (uris: string[]) => {
     setStage("analyzing");
+    setPhotos(uris.map((uri) => ({ uri, uploading: true })));
 
     try {
-      const manipulated = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 1200 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      // Upload all photos
+      const uploadedPhotos = await Promise.all(
+        uris.map(async (uri, index) => {
+          const manipulated = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: 1200 } }],
+            { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+          );
+          const uploadedUrl = await uploadWardrobeImage(
+            user!.id,
+            manipulated.uri,
+            () => {},
+          );
+
+          setPhotos((prev) =>
+            prev.map((p, i) =>
+              i === index
+                ? { ...p, uploaded: true, uploading: false, uploadedUrl }
+                : p,
+            ),
+          );
+
+          return uploadedUrl;
+        }),
       );
 
-      const imageUrl = await uploadWardrobeImage(
-        user!.id,
-        manipulated.uri,
-        () => {},
-      );
-
+      // Analyze first photo for tags (use first photo's tags as default)
       let tags;
       try {
-        tags = (await analyzeClothingItem(imageUrl)).tags;
+        tags = (await analyzeClothingItem(uploadedPhotos[0])).tags;
       } catch {
         await new Promise((r) => setTimeout(r, 2000));
         tags = generateMockTags("top");
       }
 
       setStage("done");
-      navigation.navigate("ReviewTags", { imageUrl, tags });
+      navigation.navigate("ReviewTags", { imageUrls: uploadedPhotos, tags });
       // Reset so next FAB open is fresh
-      setTimeout(() => setStage("idle"), 500);
+      setTimeout(() => {
+        setStage("idle");
+        setPhotos([]);
+      }, 500);
     } catch (error) {
       if (error instanceof UploadError) {
         setErrorMessage(error.message);

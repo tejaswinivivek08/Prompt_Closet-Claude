@@ -9,8 +9,11 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
+import { uploadWardrobeImage } from "../../services/storageService";
 import type { ClothingCategory, Pattern, Occasion } from "../../types";
 import type { ClothingTags } from "../../services/taggingService";
 import {
@@ -18,11 +21,13 @@ import {
   saveEmbedding,
 } from "../../services/embeddingService";
 
+const MAX_PHOTOS = 4;
+
 interface ReviewTagsScreenProps {
   navigation: any;
   route: {
     params: {
-      imageUrl: string;
+      imageUrls: string[];
       tags: ClothingTags;
     };
   };
@@ -83,8 +88,12 @@ export default function ReviewTagsScreen({
   navigation,
   route,
 }: ReviewTagsScreenProps) {
-  const { imageUrl, tags: initialTags } = route.params;
+  const { imageUrls: initialUrls, tags: initialTags } = route.params;
   const { user } = useAuth();
+
+  const [imageUrls, setImageUrls] = useState<string[]>(initialUrls);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [replacing, setReplacing] = useState(false);
 
   const [category, setCategory] = useState<ClothingCategory>(
     initialTags.category,
@@ -134,12 +143,13 @@ export default function ReviewTagsScreen({
     setSaving(true);
 
     try {
-      // Insert into wardrobe_items
+      // Insert into wardrobe_items — save first URL as cover and full array
       const { data, error } = await supabase
         .from("wardrobe_items")
         .insert({
           user_id: user.id,
-          image_url: imageUrl,
+          image_url: imageUrls[0],
+          image_urls: imageUrls,
           category,
           subcategory: subcategory || null,
           colors,
@@ -158,7 +168,7 @@ export default function ReviewTagsScreen({
 
       // Generate and save CLIP embedding for semantic search
       try {
-        const { embedding } = await generateImageEmbedding(imageUrl);
+        const { embedding } = await generateImageEmbedding(imageUrls[0]);
         await saveEmbedding(data.id, user.id, embedding);
       } catch (embErr) {
         // Non-fatal: item is saved, embedding can be regenerated later
@@ -178,16 +188,123 @@ export default function ReviewTagsScreen({
     }
   };
 
+  const handleReplacePhoto = async (index: number) => {
+    if (!user) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Photo library access required.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setReplacing(true);
+    try {
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      const newUrl = await uploadWardrobeImage(
+        user.id,
+        manipulated.uri,
+        () => {},
+      );
+      setImageUrls((prev) =>
+        prev.map((url, i) => (i === index ? newUrl : url)),
+      );
+    } catch {
+      Alert.alert("Error", "Failed to replace photo.");
+    } finally {
+      setReplacing(false);
+    }
+  };
+
+  const handleAddPhoto = async () => {
+    if (!user || imageUrls.length >= MAX_PHOTOS) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Photo library access required.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setReplacing(true);
+    try {
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      const newUrl = await uploadWardrobeImage(
+        user.id,
+        manipulated.uri,
+        () => {},
+      );
+      setImageUrls((prev) => [...prev, newUrl]);
+    } catch {
+      Alert.alert("Error", "Failed to add photo.");
+    } finally {
+      setReplacing(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Image Preview */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: imageUrl }}
+            source={{ uri: imageUrls[selectedPhotoIndex] }}
             style={styles.image}
             resizeMode="cover"
           />
+          {replacing && (
+            <View style={styles.replacingOverlay}>
+              <Text style={styles.replacingText}>Uploading…</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Thumbnail Strip */}
+        <View style={styles.thumbnailStrip}>
+          {imageUrls.map((url, index) => (
+            <TouchableOpacity
+              key={url}
+              onPress={() => setSelectedPhotoIndex(index)}
+              style={[
+                styles.thumbnail,
+                selectedPhotoIndex === index && styles.thumbnailSelected,
+              ]}
+            >
+              <Image source={{ uri: url }} style={styles.thumbnailImage} />
+              <TouchableOpacity
+                style={styles.replaceThumbBtn}
+                onPress={() => handleReplacePhoto(index)}
+              >
+                <Text style={styles.replaceThumbBtnText}>✕</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+          {imageUrls.length < MAX_PHOTOS && (
+            <TouchableOpacity
+              style={styles.addThumbnail}
+              onPress={handleAddPhoto}
+            >
+              <Text style={styles.addThumbnailText}>+</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Category */}
@@ -392,6 +509,71 @@ const styles = StyleSheet.create({
   },
   image: {
     flex: 1,
+  },
+  replacingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  replacingText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  thumbnailStrip: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#2C2C2C",
+  },
+  thumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  thumbnailSelected: {
+    borderColor: "#C9847A",
+  },
+  thumbnailImage: {
+    width: "100%",
+    height: "100%",
+  },
+  replaceThumbBtn: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  replaceThumbBtnText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  addThumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+    borderStyle: "dashed",
+  },
+  addThumbnailText: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "300",
   },
   section: {
     padding: 16,

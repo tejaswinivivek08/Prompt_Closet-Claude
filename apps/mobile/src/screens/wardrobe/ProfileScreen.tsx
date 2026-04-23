@@ -21,6 +21,54 @@ const SKIN_TONES = [
   { label: "Deep Warm", value: "deep-warm", hex: "#3E1F0D" },
 ];
 
+// 2D skin tone palette: rows = undertone (cool→neutral→warm), cols = depth (light→deep)
+const SKIN_TONE_GRID: { undertone: string; depth: string; hex: string }[] = [
+  // Light
+  { undertone: "cool", depth: "light", hex: "#FAE7E0" },
+  { undertone: "neutral", depth: "light", hex: "#F5DEB3" },
+  { undertone: "warm", depth: "light", hex: "#FFE4C4" },
+  // Fair
+  { undertone: "cool", depth: "fair", hex: "#FDEBD3" },
+  { undertone: "neutral", depth: "fair", hex: "#F0D5B0" },
+  { undertone: "warm", depth: "fair", hex: "#F5CBA7" },
+  // Medium Light
+  { undertone: "cool", depth: "medium-light", hex: "#E8C4A0" },
+  { undertone: "neutral", depth: "medium-light", hex: "#DEB887" },
+  { undertone: "warm", depth: "medium-light", hex: "#D2A679" },
+  // Medium
+  { undertone: "cool", depth: "medium", hex: "#C8A47E" },
+  { undertone: "neutral", depth: "medium", hex: "#BF9B76" },
+  { undertone: "warm", depth: "medium", hex: "#B8860B" },
+  // Olive
+  { undertone: "cool", depth: "olive", hex: "#A08060" },
+  { undertone: "neutral", depth: "olive", hex: "#9B7B4D" },
+  { undertone: "warm", depth: "olive", hex: "#8B6914" },
+  // Tan
+  { undertone: "cool", depth: "tan", hex: "#8D6346" },
+  { undertone: "neutral", depth: "tan", hex: "#7B5C3E" },
+  { undertone: "warm", depth: "tan", hex: "#6B4423" },
+  // Deep
+  { undertone: "cool", depth: "deep", hex: "#6B3E26" },
+  { undertone: "neutral", depth: "deep", hex: "#5B3A1E" },
+  { undertone: "warm", depth: "deep", hex: "#4B2B12" },
+  // Dark
+  { undertone: "cool", depth: "dark", hex: "#3E1F0D" },
+  { undertone: "neutral", depth: "dark", hex: "#2E1508" },
+  { undertone: "warm", depth: "dark", hex: "#1E0A00" },
+];
+
+const UNDERTONES = ["cool", "neutral", "warm"] as const;
+const DEPTHS = [
+  "light",
+  "fair",
+  "medium-light",
+  "medium",
+  "olive",
+  "tan",
+  "deep",
+  "dark",
+] as const;
+
 const STYLE_PREFERENCES = [
   "Minimalist",
   "Streetwear",
@@ -42,11 +90,7 @@ export default function ProfileScreen() {
   const [totalItems, setTotalItems] = useState(0);
   const [outfitsCreated, setOutfitsCreated] = useState(0);
   const [daysActive, setDaysActive] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editHeight, setEditHeight] = useState("");
-  const [editWeight, setEditWeight] = useState("");
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -66,9 +110,6 @@ export default function ProfileScreen() {
       const m = (data.body_measurements as Record<string, string>) ?? {};
       setHeight(m.height ?? "");
       setWeight(m.weight ?? "");
-      setEditName(data.full_name ?? "");
-      setEditHeight(m.height ?? "");
-      setEditWeight(m.weight ?? "");
       if (data.style_preferences) {
         setStylePrefs(data.style_preferences as string[]);
       }
@@ -102,29 +143,40 @@ export default function ProfileScreen() {
     setDaysActive(days > 0 ? days : 1);
   };
 
-  const handleSave = async () => {
+  const autoSave = async (
+    fields: Partial<{
+      full_name: string;
+      height: string;
+      weight: string;
+      skin_tone_palette: string | null;
+      style_preferences: string[];
+    }>,
+  ) => {
     if (!user) return;
-    setSaving(true);
     await supabase.from("profiles").upsert({
       id: user.id,
-      username: editName,
-      full_name: editName,
-      skin_tone_palette: skinTone,
-      body_measurements: { height: editHeight, weight: editWeight },
-      style_preferences: stylePrefs,
+      ...fields,
+      body_measurements:
+        fields.height !== undefined || fields.weight !== undefined
+          ? { height, weight }
+          : undefined,
     });
-    setName(editName);
-    setHeight(editHeight);
-    setWeight(editWeight);
-    setEditing(false);
-    setSaving(false);
-    Alert.alert("Saved", "Profile updated successfully.");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   const toggleStylePref = (pref: string) => {
-    setStylePrefs((prev) =>
-      prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref],
-    );
+    const next = stylePrefs.includes(pref)
+      ? stylePrefs.filter((p) => p !== pref)
+      : [...stylePrefs, pref];
+    setStylePrefs(next);
+    autoSave({ style_preferences: next });
+  };
+
+  const handleSkinToneChange = (hex: string) => {
+    const next = skinTone === hex ? null : hex;
+    setSkinTone(next);
+    autoSave({ skin_tone_palette: next });
   };
 
   const initials = name
@@ -147,39 +199,20 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          {editing ? (
-            <View style={styles.editNameRow}>
-              <TextInput
-                style={styles.editInput}
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Your name"
-                placeholderTextColor="#A0978E"
-              />
-              <TouchableOpacity
-                style={styles.editSaveBtn}
-                onPress={handleSave}
-                disabled={saving}
-              >
-                <Text style={styles.editSaveBtnText}>
-                  {saving ? "..." : "Save"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={() => setEditing(true)}>
-              <Text style={styles.userName}>{name || "Your Name"}</Text>
-              <Text style={styles.userEmail}>{user?.email}</Text>
-            </TouchableOpacity>
-          )}
-          {!editing && (
-            <TouchableOpacity
-              style={styles.editIconBtn}
-              onPress={() => setEditing(true)}
-            >
-              <Text style={styles.editIconText}>✏️</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.nameRow}>
+            <TextInput
+              style={styles.nameInput}
+              value={name}
+              onChangeText={(v) => {
+                setName(v);
+                autoSave({ full_name: v });
+              }}
+              placeholder="Your name"
+              placeholderTextColor="#A0978E"
+            />
+            {saved && <Text style={styles.savedBadge}>Saved ✓</Text>}
+          </View>
+          <Text style={styles.userEmail}>{user?.email}</Text>
         </View>
 
         {/* Body Profile Card */}
@@ -187,79 +220,62 @@ export default function ProfileScreen() {
           <Text style={styles.cardTitle}>Body Profile</Text>
           <View style={styles.metricsRow}>
             <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Height</Text>
-              {editing ? (
-                <TextInput
-                  style={[styles.metricValue, styles.metricTextInput]}
-                  value={editHeight}
-                  onChangeText={setEditHeight}
-                  placeholder="cm"
-                  placeholderTextColor="#A0978E"
-                  keyboardType="numeric"
-                />
-              ) : (
-                <Text
-                  style={[
-                    styles.metricValue,
-                    !editHeight && styles.placeholder,
-                  ]}
-                >
-                  {height || "— cm"}
-                </Text>
-              )}
+              <Text style={styles.metricLabel}>Height (cm)</Text>
+              <TextInput
+                style={[styles.metricValue, styles.metricTextInput]}
+                value={height}
+                onChangeText={(v) => {
+                  setHeight(v);
+                  autoSave({ height: v });
+                }}
+                placeholder="—"
+                placeholderTextColor="#A0978E"
+                keyboardType="numeric"
+              />
             </View>
             <View style={styles.metricDivider} />
             <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Weight</Text>
-              {editing ? (
-                <TextInput
-                  style={[styles.metricValue, styles.metricTextInput]}
-                  value={editWeight}
-                  onChangeText={setEditWeight}
-                  placeholder="kg"
-                  placeholderTextColor="#A0978E"
-                  keyboardType="numeric"
-                />
-              ) : (
-                <Text
-                  style={[
-                    styles.metricValue,
-                    !editWeight && styles.placeholder,
-                  ]}
-                >
-                  {weight || "— kg"}
-                </Text>
-              )}
+              <Text style={styles.metricLabel}>Weight (kg)</Text>
+              <TextInput
+                style={[styles.metricValue, styles.metricTextInput]}
+                value={weight}
+                onChangeText={(v) => {
+                  setWeight(v);
+                  autoSave({ weight: v });
+                }}
+                placeholder="—"
+                placeholderTextColor="#A0978E"
+                keyboardType="numeric"
+              />
             </View>
           </View>
 
           <Text style={[styles.cardLabel, { marginTop: 16 }]}>Skin Tone</Text>
-          <View style={styles.skinToneRow}>
-            {SKIN_TONES.map((tone) => (
-              <TouchableOpacity
-                key={tone.value}
-                onPress={() =>
-                  editing
-                    ? setSkinTone(skinTone === tone.value ? null : tone.value)
-                    : null
-                }
-                style={[
-                  styles.skinSwatch,
-                  { backgroundColor: tone.hex },
-                  skinTone === tone.value && styles.skinSwatchSelected,
-                ]}
-              >
-                {skinTone === tone.value && (
-                  <Text style={styles.skinCheck}>✓</Text>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-          {skinTone && (
-            <Text style={styles.skinLabel}>
-              {SKIN_TONES.find((t) => t.value === skinTone)?.label}
-            </Text>
-          )}
+          {/* 2D Grid: rows by undertone, columns by depth */}
+          {UNDERTONES.map((undertone) => (
+            <View key={undertone} style={styles.skinToneRow}>
+              <Text style={styles.undertoneLabel}>{undertone}</Text>
+              <View style={styles.skinToneColors}>
+                {DEPTHS.map((depth) => {
+                  const entry = SKIN_TONE_GRID.find(
+                    (g) => g.undertone === undertone && g.depth === depth,
+                  );
+                  if (!entry) return null;
+                  return (
+                    <TouchableOpacity
+                      key={depth}
+                      onPress={() => handleSkinToneChange(entry.hex)}
+                      style={[
+                        styles.skinSwatch,
+                        { backgroundColor: entry.hex },
+                        skinTone === entry.hex && styles.skinSwatchSelected,
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* Face Scan Card */}
@@ -290,7 +306,6 @@ export default function ProfileScreen() {
                   stylePrefs.includes(pref) && styles.chipActive,
                 ]}
                 onPress={() => toggleStylePref(pref)}
-                disabled={!editing}
               >
                 <Text
                   style={[
@@ -389,6 +404,25 @@ const styles = StyleSheet.create({
   editIconText: {
     fontSize: 18,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  nameInput: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minWidth: 160,
+    fontSize: 16,
+    color: "#2B2B2B",
+  },
+  savedBadge: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "600",
+  },
   editNameRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -486,18 +520,28 @@ const styles = StyleSheet.create({
   },
   skinToneRow: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 4,
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  undertoneLabel: {
+    fontSize: 10,
+    color: "#A0978E",
+    fontWeight: "500",
+    width: 52,
+    textTransform: "capitalize",
+  },
+  skinToneColors: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
   },
   skinSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: "transparent",
-    justifyContent: "center",
-    alignItems: "center",
   },
   skinSwatchSelected: {
     borderColor: "#C9847A",
