@@ -44,7 +44,13 @@
       "expo-asset",
       "expo-font",
       "expo-secure-store",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-build-properties",
+        {
+          "devClient": true
+        }
+      ]
     ],
     "extra": {
       "eas": {

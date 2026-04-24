@@ -232,37 +232,59 @@ function ItemCard({
 interface FilterBarProps {
   selected: CategoryFilter;
   onSelect: (cat: CategoryFilter) => void;
+  counts: Record<string, number>;
 }
 
-function FilterBar({ selected, onSelect }: FilterBarProps) {
+function FilterBar({ selected, onSelect, counts }: FilterBarProps) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.filterBar}
-    >
-      {CATEGORY_FILTERS.map((cat) => {
-        const isActive = cat === selected;
-        return (
-          <TouchableOpacity
-            key={cat}
-            style={[styles.filterPill, isActive && styles.filterPillActive]}
-            onPress={() => onSelect(cat)}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                isActive && styles.filterPillTextActive,
-              ]}
+    <View style={styles.filterBarOuter}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterBar}
+      >
+        {CATEGORY_FILTERS.map((cat) => {
+          const isActive = cat === selected;
+          const count =
+            cat === "All"
+              ? Object.values(counts).reduce((a, b) => a + b, 0)
+              : (counts[cat] ?? 0);
+          const label =
+            cat === "All" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1);
+          return (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.filterPill, isActive && styles.filterPillActive]}
+              onPress={() => onSelect(cat)}
             >
-              {cat === "All"
-                ? "All"
-                : cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+              <Text
+                style={[
+                  styles.filterPillText,
+                  isActive && styles.filterPillTextActive,
+                ]}
+              >
+                {label}
+              </Text>
+              <View
+                style={[
+                  styles.filterCountBadge,
+                  isActive && styles.filterCountBadgeActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.filterCountText,
+                    isActive && styles.filterCountTextActive,
+                  ]}
+                >
+                  {count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -466,6 +488,15 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
 
   const isSearching = searchResults !== null || searchQuery.trim().length > 0;
 
+  // Compute category counts from items
+  const categoryCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    items.forEach((item) => {
+      counts[item.category] = (counts[item.category] ?? 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
   const renderItem = useCallback(
     ({ item, index }: { item: WardrobeItem; index: number }) => {
       const searchResult = searchResults?.find((r) => r.item_id === item.id);
@@ -544,6 +575,12 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>My Closet</Text>
+        <TouchableOpacity
+          style={styles.headerAddBtn}
+          onPress={() => navigation.navigate("AddItem")}
+        >
+          <Text style={styles.headerAddBtnText}>+</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Offline Banner */}
@@ -570,7 +607,11 @@ export default function ClosetScreen({ navigation }: ClosetScreenProps) {
 
       {/* Category Filter */}
       {!isSearching && (
-        <FilterBar selected={selectedFilter} onSelect={setSelectedFilter} />
+        <FilterBar
+          selected={selectedFilter}
+          onSelect={setSelectedFilter}
+          counts={categoryCounts}
+        />
       )}
 
       {/* Grid */}
@@ -620,9 +661,31 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  headerAddBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerAddBtnText: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "300",
+    marginTop: -2,
   },
   offlineBanner: {
     backgroundColor: "#FFF3E0",
@@ -681,20 +744,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
+  filterBarOuter: {
+    backgroundColor: "#F5F0EA",
+  },
   filterBar: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     gap: 8,
     flexDirection: "row",
+    alignItems: "center",
   },
   filterPill: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: "#FFFFFF",
     marginRight: 8,
+    minHeight: 36,
   },
   filterPillActive: {
     backgroundColor: COLORS.primary,
@@ -704,8 +774,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     fontWeight: "500",
+    marginRight: 4,
   },
   filterPillTextActive: {
+    color: "#FFFFFF",
+  },
+  filterCountBadge: {
+    backgroundColor: "#EDE8E4",
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 20,
+    alignItems: "center",
+  },
+  filterCountBadgeActive: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+  filterCountText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: COLORS.textSecondary,
+  },
+  filterCountTextActive: {
     color: "#FFFFFF",
   },
   gridContent: {

@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
@@ -59,6 +60,7 @@ export default function ItemDetailScreen({
   const [item, setItem] = React.useState<any>(null);
   const [deleting, setDeleting] = React.useState(false);
   const [changingPhoto, setChangingPhoto] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
 
   React.useEffect(() => {
     async function fetchItem() {
@@ -73,25 +75,67 @@ export default function ItemDetailScreen({
     fetchItem();
   }, [itemId]);
 
-  const handleChangePhoto = async () => {
-    if (!user) return;
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Photo library access required.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-    if (result.canceled || !result.assets?.[0]) return;
+  const handleChangePhotoSheet = () => {
+    setSheetVisible(true);
+  };
 
-    setChangingPhoto(true);
+  const handlePhotoSelected = async (optionId: string) => {
+    if (!user) return;
+    setSheetVisible(false);
+
+    let uri: string | undefined;
+
     try {
+      if (optionId === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Camera access required.");
+          return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+        });
+        if (result.canceled || !result.assets?.[0]) return;
+        uri = result.assets[0].uri;
+      } else if (optionId === "library") {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Photo library access required.");
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+        });
+        if (result.canceled || !result.assets?.[0]) return;
+        uri = result.assets[0].uri;
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "File access required.");
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 1,
+        });
+        if (result.canceled || !result.assets?.[0]) return;
+        uri = result.assets[0].uri;
+      }
+
+      if (!uri) return;
+      setChangingPhoto(true);
+
       const manipulated = await ImageManipulator.manipulateAsync(
-        result.assets[0].uri,
+        uri,
         [{ resize: { width: 1200 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
       );
@@ -100,7 +144,6 @@ export default function ItemDetailScreen({
         manipulated.uri,
         () => {},
       );
-      // Update wardrobe_items with new cover photo
       const currentUrls = item.image_urls ?? [item.image_url];
       const newUrls = [
         newUrl,
@@ -110,14 +153,12 @@ export default function ItemDetailScreen({
         .from("wardrobe_items")
         .update({ image_url: newUrl, image_urls: newUrls })
         .eq("id", itemId);
-      // Re-fetch item and update imageUrl shown
       const { data } = await supabase
         .from("wardrobe_items")
         .select("*")
         .eq("id", itemId)
         .single();
       setItem(data);
-      // Navigate to a fresh ItemDetail with the new URL
       navigation.replace("ItemDetail", { itemId, imageUrl: newUrl });
     } catch {
       Alert.alert("Error", "Failed to change photo.");
@@ -283,13 +324,15 @@ export default function ItemDetailScreen({
 
           <TouchableOpacity
             style={styles.changePhotoButton}
-            onPress={handleChangePhoto}
+            onPress={handleChangePhotoSheet}
             disabled={changingPhoto}
           >
             {changingPhoto ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.changePhotoButtonText}>📷 Change Photo</Text>
+              <Text style={styles.changePhotoButtonText}>
+                📷 Change Cover Photo
+              </Text>
             )}
           </TouchableOpacity>
 
@@ -333,6 +376,61 @@ export default function ItemDetailScreen({
       >
         <Text style={styles.closeButtonText}>✕</Text>
       </TouchableOpacity>
+
+      {/* Change Photo Bottom Sheet */}
+      <Modal
+        visible={sheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSheetVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.sheetBackdrop}
+          activeOpacity={1}
+          onPress={() => setSheetVisible(false)}
+        >
+          <View style={styles.sheetContent}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Change Cover Photo</Text>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={() => handlePhotoSelected("camera")}
+            >
+              <Text style={styles.sheetOptionIcon}>📷</Text>
+              <View style={styles.sheetOptionText}>
+                <Text style={styles.sheetOptionLabel}>Take Photo</Text>
+                <Text style={styles.sheetOptionSub}>Use your camera</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={() => handlePhotoSelected("library")}
+            >
+              <Text style={styles.sheetOptionIcon}>🖼️</Text>
+              <View style={styles.sheetOptionText}>
+                <Text style={styles.sheetOptionLabel}>Choose from Library</Text>
+                <Text style={styles.sheetOptionSub}>Pick from your photos</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={() => handlePhotoSelected("files")}
+            >
+              <Text style={styles.sheetOptionIcon}>📁</Text>
+              <View style={styles.sheetOptionText}>
+                <Text style={styles.sheetOptionLabel}>Upload from Files</Text>
+                <Text style={styles.sheetOptionSub}>Browse file storage</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sheetCancel}
+              onPress={() => setSheetVisible(false)}
+            >
+              <Text style={styles.sheetCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -559,5 +657,71 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
+  },
+  // Bottom sheet
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  sheetContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 36,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E0D8D0",
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#2C2C2C",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  sheetOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9F5F0",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    minHeight: 60,
+  },
+  sheetOptionIcon: {
+    fontSize: 28,
+    marginRight: 16,
+  },
+  sheetOptionText: {
+    flex: 1,
+  },
+  sheetOptionLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2C2C2C",
+  },
+  sheetOptionSub: {
+    fontSize: 12,
+    color: "#A0978E",
+    marginTop: 2,
+  },
+  sheetCancel: {
+    marginTop: 8,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  sheetCancelText: {
+    fontSize: 16,
+    color: "#A0978E",
+    fontWeight: "500",
   },
 });

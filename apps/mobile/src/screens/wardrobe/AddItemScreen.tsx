@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,10 @@ import {
   Alert,
   Animated,
   TouchableOpacity,
+  Modal,
+  Image,
+  ScrollView,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
@@ -19,6 +23,7 @@ import {
 import { analyzeClothingItem } from "../../services/taggingService";
 
 const MAX_PHOTOS = 4;
+const SCREEN_W = Dimensions.get("window").width;
 
 interface AddItemScreenProps {
   navigation: any;
@@ -112,17 +117,88 @@ function generateMockTags(category = "top") {
   };
 }
 
+// ─── Bottom Sheet ────────────────────────────────────────────────────────────
+
+interface BottomSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (option: "camera" | "library" | "files") => void;
+}
+
+function AddItemBottomSheet({ visible, onClose, onSelect }: BottomSheetProps) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.sheetBackdrop}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <View style={styles.sheetContent}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>Add New Item</Text>
+
+          <TouchableOpacity
+            style={styles.sheetOption}
+            onPress={() => {
+              onSelect("camera");
+              onClose();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.sheetOptionIcon}>📷</Text>
+            <View style={styles.sheetOptionText}>
+              <Text style={styles.sheetOptionLabel}>Take Photo</Text>
+              <Text style={styles.sheetOptionSub}>Use your camera</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.sheetOption}
+            onPress={() => {
+              onSelect("library");
+              onClose();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.sheetOptionIcon}>🖼️</Text>
+            <View style={styles.sheetOptionText}>
+              <Text style={styles.sheetOptionLabel}>Choose from Library</Text>
+              <Text style={styles.sheetOptionSub}>Pick from your photos</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.sheetOption}
+            onPress={() => {
+              onSelect("files");
+              onClose();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.sheetOptionIcon}>📁</Text>
+            <View style={styles.sheetOptionText}>
+              <Text style={styles.sheetOptionLabel}>Upload from Files</Text>
+              <Text style={styles.sheetOptionSub}>Browse file storage</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sheetCancel} onPress={onClose}>
+            <Text style={styles.sheetCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 // ─── Screen ─────────────────────────────────────────────────────────────────
 
-type Stage = "idle" | "analyzing" | "done" | "error";
-
-interface PhotoEntry {
-  uri: string;
-  uploading: boolean;
-  uploadedUrl?: string;
-  analyzed?: boolean;
-  tags?: ReturnType<typeof generateMockTags>;
-}
+type Stage = "idle" | "preview" | "analyzing" | "done" | "error";
 
 export default function AddItemScreen({
   navigation,
@@ -131,8 +207,9 @@ export default function AddItemScreen({
   const { user } = useAuth();
   const { isConnected } = useNetwork();
   const [stage, setStage] = useState<Stage>("idle");
-  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [selectedUris, setSelectedUris] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -162,11 +239,11 @@ export default function AddItemScreen({
   useEffect(() => {
     const option = route?.params?.option as string | undefined;
     if (option && stage === "idle") {
-      handleSelect(option);
+      handleSelectOption(option);
     }
   }, [route?.params?.option]);
 
-  const handleSelect = async (optionId: string) => {
+  const handleSelectOption = async (optionId: string) => {
     if (!isConnected) {
       Alert.alert("Offline", "Photos can't be uploaded while offline.");
       return;
@@ -188,7 +265,7 @@ export default function AddItemScreen({
         });
         if (result.canceled || !result.assets?.[0]) return;
         uris = result.assets.map((a) => a.uri);
-      } else {
+      } else if (optionId === "library") {
         const { status } =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
@@ -204,47 +281,52 @@ export default function AddItemScreen({
         });
         if (result.canceled || !result.assets?.length) return;
         uris = result.assets.map((a) => a.uri).slice(0, MAX_PHOTOS);
+      } else {
+        // Files — fall back to library picker for document access
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "File access required.");
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 1,
+          allowsMultipleSelection: true,
+        });
+        if (result.canceled || !result.assets?.length) return;
+        uris = result.assets.map((a) => a.uri).slice(0, MAX_PHOTOS);
       }
 
-      await processImages(uris);
+      setSelectedUris(uris);
+      setStage("preview");
     } catch {
       setErrorMessage("Failed to select image. Please try again.");
       setStage("error");
     }
   };
 
+  const handleConfirmPhotos = async () => {
+    if (selectedUris.length === 0) return;
+    await processImages(selectedUris);
+  };
+
   const processImages = async (uris: string[]) => {
     setStage("analyzing");
-    setPhotos(uris.map((uri) => ({ uri, uploading: true })));
 
     try {
-      // Upload all photos
       const uploadedPhotos = await Promise.all(
-        uris.map(async (uri, index) => {
+        uris.map(async (uri) => {
           const manipulated = await ImageManipulator.manipulateAsync(
             uri,
             [{ resize: { width: 1200 } }],
             { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
           );
-          const uploadedUrl = await uploadWardrobeImage(
-            user!.id,
-            manipulated.uri,
-            () => {},
-          );
-
-          setPhotos((prev) =>
-            prev.map((p, i) =>
-              i === index
-                ? { ...p, uploaded: true, uploading: false, uploadedUrl }
-                : p,
-            ),
-          );
-
-          return uploadedUrl;
+          return uploadWardrobeImage(user!.id, manipulated.uri, () => {});
         }),
       );
 
-      // Analyze first photo for tags (use first photo's tags as default)
       let tags;
       try {
         tags = (await analyzeClothingItem(uploadedPhotos[0])).tags;
@@ -253,12 +335,10 @@ export default function AddItemScreen({
         tags = generateMockTags("top");
       }
 
-      setStage("done");
       navigation.navigate("ReviewTags", { imageUrls: uploadedPhotos, tags });
-      // Reset so next FAB open is fresh
       setTimeout(() => {
         setStage("idle");
-        setPhotos([]);
+        setSelectedUris([]);
       }, 500);
     } catch (error) {
       if (error instanceof UploadError) {
@@ -275,16 +355,82 @@ export default function AddItemScreen({
     setStage("idle");
   };
 
-  // ─── Idle: show hint ────────────────────────────────────────────────────
+  // ─── Idle ────────────────────────────────────────────────────────────────
   if (stage === "idle") {
     return (
       <SafeAreaView style={styles.idleContainer} edges={["top"]}>
-        <Text style={styles.idleHint}>Tap the + button to add an item</Text>
+        <View style={styles.idleContent}>
+          <Text style={styles.idleIcon}>👗</Text>
+          <Text style={styles.idleTitle}>Add items to your closet</Text>
+          <Text style={styles.idleHint}>
+            Build your virtual wardrobe by adding photos of your clothing
+          </Text>
+          <TouchableOpacity
+            style={styles.idleAddBtn}
+            onPress={() => setSheetVisible(true)}
+          >
+            <Text style={styles.idleAddBtnText}>+ Add Item</Text>
+          </TouchableOpacity>
+        </View>
+        <AddItemBottomSheet
+          visible={sheetVisible}
+          onClose={() => setSheetVisible(false)}
+          onSelect={handleSelectOption}
+        />
       </SafeAreaView>
     );
   }
 
-  // ─── Analyzing: pulsing screen ───────────────────────────────────────────
+  // ─── Preview ────────────────────────────────────────────────────────────
+  if (stage === "preview") {
+    return (
+      <SafeAreaView style={styles.previewContainer} edges={["top"]}>
+        <ScrollView contentContainerStyle={styles.previewScroll}>
+          <Text style={styles.previewTitle}>
+            {selectedUris.length} photo{selectedUris.length > 1 ? "s" : ""}{" "}
+            selected
+          </Text>
+          <View style={styles.previewGrid}>
+            {selectedUris.map((uri, i) => (
+              <View key={uri} style={styles.previewThumb}>
+                <Image source={{ uri }} style={styles.previewThumbImage} />
+                {i === 0 && (
+                  <View style={styles.coverBadge}>
+                    <Text style={styles.coverBadgeText}>Cover</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+          <Text style={styles.previewSubtitle}>
+            First photo is the cover.{" "}
+            {selectedUris.length < MAX_PHOTOS
+              ? `You can add up to ${MAX_PHOTOS} photos.`
+              : `${MAX_PHOTOS} photos — the maximum.`}
+          </Text>
+          <TouchableOpacity
+            style={styles.analyzeBtn}
+            onPress={handleConfirmPhotos}
+          >
+            <Text style={styles.analyzeBtnText}>✨ Analyze with AI</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.changeBtn}
+            onPress={() => setSheetVisible(true)}
+          >
+            <Text style={styles.changeBtnText}>Change Photos</Text>
+          </TouchableOpacity>
+        </ScrollView>
+        <AddItemBottomSheet
+          visible={sheetVisible}
+          onClose={() => setSheetVisible(false)}
+          onSelect={handleSelectOption}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // ─── Analyzing ──────────────────────────────────────────────────────────
   if (stage === "analyzing") {
     const scale = pulseAnim.interpolate({
       inputRange: [0, 1],
@@ -305,7 +451,7 @@ export default function AddItemScreen({
         >
           <Text style={styles.analyzingIcon}>✨</Text>
         </Animated.View>
-        <Text style={styles.analyzingTitle}>Scanning & Analyzing…</Text>
+        <Text style={styles.analyzingTitle}>Analyzing with AI…</Text>
         <Text style={styles.analyzingSubtitle}>
           Detecting colors, fabric & style
         </Text>
@@ -335,11 +481,14 @@ export default function AddItemScreen({
       <SafeAreaView style={styles.errorContainer} edges={["top"]}>
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>{errorMessage}</Text>
-        <View style={styles.retryButton}>
-          <TouchableOpacity onPress={handleRetry} style={styles.retryBtnInner}>
-            <Text style={styles.retryBtnText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
+          <Text style={styles.retryBtnText}>Try Again</Text>
+        </TouchableOpacity>
+        <AddItemBottomSheet
+          visible={sheetVisible}
+          onClose={() => setSheetVisible(false)}
+          onSelect={handleSelectOption}
+        />
       </SafeAreaView>
     );
   }
@@ -353,12 +502,114 @@ const styles = StyleSheet.create({
   idleContainer: {
     flex: 1,
     backgroundColor: "#F5F0EA",
+  },
+  idleContent: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  idleIcon: {
+    fontSize: 72,
+    marginBottom: 20,
+  },
+  idleTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#2C2C2C",
+    marginBottom: 8,
+    textAlign: "center",
   },
   idleHint: {
     fontSize: 15,
-    color: "#A0978E",
+    color: "#7A6F68",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  idleAddBtn: {
+    backgroundColor: "#C9847A",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 36,
+  },
+  idleAddBtnText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  previewContainer: {
+    flex: 1,
+    backgroundColor: "#F5F0EA",
+  },
+  previewScroll: {
+    padding: 20,
+    alignItems: "center",
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#2C2C2C",
+    marginBottom: 16,
+  },
+  previewGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  previewThumb: {
+    width: (SCREEN_W - 50) / 2,
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#E8E0D8",
+  },
+  previewThumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  coverBadge: {
+    position: "absolute",
+    bottom: 6,
+    left: 6,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  coverBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  previewSubtitle: {
+    fontSize: 13,
+    color: "#7A6F68",
+    textAlign: "center",
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  analyzeBtn: {
+    backgroundColor: "#C9847A",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    marginBottom: 12,
+  },
+  analyzeBtnText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  changeBtn: {
+    paddingVertical: 12,
+  },
+  changeBtnText: {
+    color: "#7A6F68",
+    fontSize: 15,
+    fontWeight: "500",
   },
   analyzingContainer: {
     flex: 1,
@@ -376,7 +627,7 @@ const styles = StyleSheet.create({
   analyzingTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#2B2B2B",
+    color: "#2C2C2C",
     marginBottom: 8,
     textAlign: "center",
   },
@@ -409,17 +660,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: "#2B2B2B",
+    color: "#2C2C2C",
     textAlign: "center",
     marginBottom: 28,
     lineHeight: 24,
   },
-  retryButton: {
+  retryBtn: {
     backgroundColor: "#C9847A",
     borderRadius: 12,
-    overflow: "hidden",
-  },
-  retryBtnInner: {
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
@@ -427,5 +675,71 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  // Bottom sheet
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  sheetContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 36,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E0D8D0",
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#2C2C2C",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  sheetOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9F5F0",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    minHeight: 60,
+  },
+  sheetOptionIcon: {
+    fontSize: 28,
+    marginRight: 16,
+  },
+  sheetOptionText: {
+    flex: 1,
+  },
+  sheetOptionLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2C2C2C",
+  },
+  sheetOptionSub: {
+    fontSize: 12,
+    color: "#A0978E",
+    marginTop: 2,
+  },
+  sheetCancel: {
+    marginTop: 8,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  sheetCancelText: {
+    fontSize: 16,
+    color: "#A0978E",
+    fontWeight: "500",
   },
 });
