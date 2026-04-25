@@ -50,7 +50,7 @@ async function callMiniMaxLLM(query: string, items: any[], miniMaxKey: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "MiniMax-Text-01",
+      model: "abab6.5s-chat",
       messages: [
         {
           role: "system",
@@ -65,6 +65,7 @@ async function callMiniMaxLLM(query: string, items: any[], miniMaxKey: string) {
     }),
   });
   const data = await res.json();
+  // MiniMax chat API returns content in choices[0].message.content
   const content = data.choices?.[0]?.message?.content || "[]";
   // Try to parse JSON from response
   const match = content.match(/\[[\s\S]*\]/);

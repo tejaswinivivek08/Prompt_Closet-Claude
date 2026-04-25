@@ -1,169 +1,447 @@
 import Link from "next/link";
+import {
+  Sparkles,
+  Shirt,
+  Droplet,
+  ArrowRight,
+  Check,
+  Star,
+} from "lucide-react";
 
 export default function LandingPage() {
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ backgroundColor: "#F5F0EA" }}
-    >
-      {/* Nav */}
+    <div style={{ backgroundColor: "#F5F0EA", minHeight: "100vh" }}>
+      {/* Navbar */}
       <nav
-        className="w-full px-8 py-5 flex items-center justify-between"
-        style={{ backgroundColor: "#F5F0EA" }}
+        className="sticky top-0 z-50 px-6 py-4"
+        style={{
+          backgroundColor: "rgba(255,255,255,0.95)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid #E5DDD5",
+        }}
       >
-        <div className="flex items-center gap-2">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: "#C9847A" }}
-          >
-            <span className="text-white text-sm font-bold">P</span>
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Prompt Closet" className="h-10 w-auto" />
+            <span className="font-bold text-lg" style={{ color: "#2B2B2B" }}>
+              Prompt Closet
+            </span>
           </div>
-          <span className="text-lg font-bold" style={{ color: "#2B2B2B" }}>
-            Prompt Closet
-          </span>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/auth"
+              className="text-sm font-medium"
+              style={{ color: "#7A6F68" }}
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/auth"
+              className="px-5 py-2 rounded-full text-sm font-semibold text-white"
+              style={{
+                backgroundColor: "#C9847A",
+                boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+              }}
+            >
+              Try Free
+            </Link>
+          </div>
         </div>
-        <Link
-          href="/auth"
-          className="px-5 py-2 rounded-full text-sm font-medium transition-all hover:opacity-90"
-          style={{ backgroundColor: "#C9847A", color: "#FFFFFF" }}
-        >
-          Sign in
-        </Link>
       </nav>
 
       {/* Hero */}
-      <main className="flex-1 flex flex-col">
-        <section className="flex-1 flex flex-col items-center justify-center text-center px-6 pt-12 pb-20">
-          {/* Badge */}
-          <div
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8 text-sm"
-            style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5DDD5" }}
-          >
-            <span
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: "#C9847A" }}
-            />
-            <span style={{ color: "#7A6F68" }}>
-              AI-powered wardrobe intelligence
-            </span>
+      <section className="px-6 py-20 text-center">
+        <div className="max-w-3xl mx-auto">
+          {/* Logo large */}
+          <div className="flex justify-center mb-8">
+            <img src="/logo.png" alt="Prompt Closet" className="h-20 w-auto" />
           </div>
 
-          {/* Heading */}
           <h1
-            className="text-5xl md:text-6xl font-bold leading-tight mb-6"
-            style={{
-              color: "#2B2B2B",
-              fontFamily: "Georgia, serif",
-              maxWidth: "720px",
-            }}
+            className="text-5xl font-bold mb-4 leading-tight"
+            style={{ color: "#2B2B2B", fontFamily: "Georgia, serif" }}
           >
-            Your AI-Powered
+            Your wardrobe,
             <br />
-            <span style={{ color: "#C9847A" }}>Personal Stylist</span>
+            intelligently styled.
           </h1>
-
-          {/* Sub */}
-          <p
-            className="text-lg md:text-xl mb-6 max-w-lg"
-            style={{ color: "#7A6F68" }}
-          >
-            Stop wearing the same 20% of your closet. Let AI do the work.
+          <p className="text-xl mb-8" style={{ color: "#7A6F68" }}>
+            AI-powered personal styling that learns your style, creates perfect
+            outfits, and helps you wear everything you own.
           </p>
 
-          {/* Stat pill */}
-          <div
-            className="inline-flex items-center gap-3 px-6 py-3 rounded-full mb-12"
-            style={{
-              backgroundColor: "#FFFFFF",
-              boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
-            }}
-          >
-            <span className="text-2xl font-bold" style={{ color: "#2B2B2B" }}>
-              148
-            </span>
-            <span style={{ color: "#7A6F68" }}>clothes</span>
-            <div className="w-px h-6" style={{ backgroundColor: "#E5DDD5" }} />
-            <span className="text-2xl font-bold" style={{ color: "#C9847A" }}>
-              20%
-            </span>
-            <span style={{ color: "#7A6F68" }}>actually worn</span>
+          {/* Stats */}
+          <div className="flex justify-center gap-8 mb-10">
+            <div className="text-center">
+              <p className="text-3xl font-bold" style={{ color: "#C9847A" }}>
+                148
+              </p>
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                avg. clothes owned
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold" style={{ color: "#C9847A" }}>
+                20%
+              </p>
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                actually worn
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold" style={{ color: "#C9847A" }}>
+                80%
+              </p>
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                wasted closet
+              </p>
+            </div>
           </div>
 
-          {/* CTA */}
           <Link
             href="/auth"
-            className="inline-flex items-center gap-3 px-8 py-4 rounded-full text-white font-semibold text-lg transition-all hover:opacity-90 mb-16"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-semibold text-lg text-white"
             style={{
               backgroundColor: "#C9847A",
-              boxShadow: "0 4px 24px rgba(201,132,122,0.4)",
+              boxShadow: "0 8px 32px rgba(201,132,122,0.4)",
             }}
           >
-            <span>Try it free</span>
-            <span>→</span>
+            <Sparkles size={20} />
+            Try it free
+            <ArrowRight size={20} />
           </Link>
+        </div>
+      </section>
 
-          {/* Feature Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-            {[
-              {
-                icon: "👗",
-                title: "Smart Closet",
-                desc: "AI auto-tags every item in seconds. Find exactly what you want to wear — no more digging.",
-                accent: "#C9847A",
-              },
-              {
-                icon: "✨",
-                title: "Magic Bar",
-                desc: "Tell us the occasion — we'll curate complete outfits from your own wardrobe instantly.",
-                accent: "#C9847A",
-              },
-              {
-                icon: "🤳",
-                title: "Digital Twin",
-                desc: "See how outfits look on you before you wear them. No more guesswork.",
-                accent: "#C9847A",
-              },
-            ].map(({ icon, title, desc }) => (
+      {/* Features */}
+      <section className="px-6 py-16" style={{ backgroundColor: "#FFFFFF" }}>
+        <div className="max-w-5xl mx-auto">
+          <h2
+            className="text-3xl font-bold text-center mb-12"
+            style={{ color: "#2B2B2B", fontFamily: "Georgia, serif" }}
+          >
+            Your AI Stylist, Always On
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Smart Closet */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                backgroundColor: "#F5F0EA",
+                border: "1px solid #F0EBE6",
+              }}
+            >
               <div
-                key={title}
-                className="rounded-2xl p-8 text-left transition-all hover:-translate-y-1 hover:shadow-lg"
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
-                  border: "1px solid #F0EBE6",
-                }}
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5"
-                  style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
-                >
-                  {icon}
-                </div>
-                <h3
-                  className="text-lg font-bold mb-2"
-                  style={{ color: "#2B2B2B" }}
-                >
-                  {title}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: "#7A6F68" }}
-                >
-                  {desc}
-                </p>
+                <Shirt size={28} style={{ color: "#C9847A" }} />
               </div>
+              <h3
+                className="font-bold text-lg mb-2"
+                style={{ color: "#2B2B2B" }}
+              >
+                Smart Closet
+              </h3>
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                Upload your clothes. AI auto-tags everything — category, color,
+                pattern, occasions. See your whole wardrobe at a glance.
+              </p>
+            </div>
+
+            {/* Magic Bar */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                backgroundColor: "#F5F0EA",
+                border: "1px solid #F0EBE6",
+              }}
+            >
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
+              >
+                <Sparkles size={28} style={{ color: "#C9847A" }} />
+              </div>
+              <h3
+                className="font-bold text-lg mb-2"
+                style={{ color: "#2B2B2B" }}
+              >
+                Magic Bar
+              </h3>
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                Tell me the occasion — I&apos;ll style the perfect outfit from
+                what you already own. Diwali, office, date night, sorted.
+              </p>
+            </div>
+
+            {/* Digital Twin */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                backgroundColor: "#F5F0EA",
+                border: "1px solid #F0EBE6",
+              }}
+            >
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
+              >
+                <Droplet size={28} style={{ color: "#C9847A" }} />
+              </div>
+              <h3
+                className="font-bold text-lg mb-2"
+                style={{ color: "#2B2B2B" }}
+              >
+                Digital Twin
+              </h3>
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                Create your AI avatar and virtually try on outfits before you
+                wear them. No more closet regrets.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof */}
+      <section className="px-6 py-12">
+        <div className="max-w-2xl mx-auto text-center">
+          <p className="text-sm mb-4" style={{ color: "#7A6F68" }}>
+            Loved by fashion-forward professionals in Singapore
+          </p>
+          <div className="flex justify-center gap-4 mb-6">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Star key={i} size={20} fill="#C9847A" color="#C9847A" />
             ))}
           </div>
-        </section>
+          <p className="italic text-sm" style={{ color: "#7A6F68" }}>
+            &quot;I finally wore all my sarees instead of just the same 3.
+            Prompt Closet is like having a personal stylist.&quot;
+          </p>
+          <p className="text-xs mt-2" style={{ color: "#C9847A" }}>
+            — Priya S., Marketing Manager
+          </p>
+        </div>
+      </section>
 
-        {/* Footer */}
-        <footer
-          className="text-center py-6 text-sm"
-          style={{ color: "#7A6F68", borderTop: "1px solid #E5DDD5" }}
-        >
-          © 2026 Prompt Closet — Built with AI
-        </footer>
-      </main>
+      {/* Pricing */}
+      <section className="px-6 py-16" style={{ backgroundColor: "#FFFFFF" }}>
+        <div className="max-w-4xl mx-auto">
+          <h2
+            className="text-3xl font-bold text-center mb-12"
+            style={{ color: "#2B2B2B", fontFamily: "Georgia, serif" }}
+          >
+            Simple, Transparent Pricing
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Free */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                backgroundColor: "#F5F0EA",
+                border: "1px solid #F0EBE6",
+              }}
+            >
+              <h3
+                className="font-bold text-lg mb-1"
+                style={{ color: "#2B2B2B" }}
+              >
+                Free
+              </h3>
+              <p
+                className="text-3xl font-bold mb-4"
+                style={{ color: "#C9847A" }}
+              >
+                $0
+                <span
+                  className="text-sm font-normal"
+                  style={{ color: "#7A6F68" }}
+                >
+                  /mo
+                </span>
+              </p>
+              <ul className="space-y-2 mb-6">
+                {[
+                  "50 wardrobe items",
+                  "20 AI outfit suggestions",
+                  "Basic style profile",
+                ].map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex items-center gap-2 text-sm"
+                    style={{ color: "#2B2B2B" }}
+                  >
+                    <Check size={14} style={{ color: "#C9847A" }} /> {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/auth"
+                className="block text-center py-2.5 rounded-xl font-semibold text-sm"
+                style={{
+                  backgroundColor: "#F5F0EA",
+                  color: "#2B2B2B",
+                  border: "1px solid #E5DDD5",
+                }}
+              >
+                Get Started
+              </Link>
+            </div>
+
+            {/* Pro */}
+            <div
+              className="rounded-2xl p-6 relative"
+              style={{
+                backgroundColor: "#FFFFFF",
+                border: "2px solid #C9847A",
+                boxShadow: "0 8px 32px rgba(201,132,122,0.2)",
+              }}
+            >
+              <div
+                className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold text-white"
+                style={{ backgroundColor: "#C9847A" }}
+              >
+                Most Popular
+              </div>
+              <h3
+                className="font-bold text-lg mb-1"
+                style={{ color: "#2B2B2B" }}
+              >
+                Pro
+              </h3>
+              <p
+                className="text-3xl font-bold mb-4"
+                style={{ color: "#C9847A" }}
+              >
+                $9.99
+                <span
+                  className="text-sm font-normal"
+                  style={{ color: "#7A6F68" }}
+                >
+                  /mo
+                </span>
+              </p>
+              <ul className="space-y-2 mb-6">
+                {[
+                  "Unlimited wardrobe items",
+                  "Unlimited AI suggestions",
+                  "Digital Twin avatar",
+                  "Virtual try-on",
+                  "Style DNA analysis",
+                ].map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex items-center gap-2 text-sm"
+                    style={{ color: "#2B2B2B" }}
+                  >
+                    <Check size={14} style={{ color: "#C9847A" }} /> {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/auth"
+                className="block text-center py-2.5 rounded-xl font-semibold text-sm text-white"
+                style={{
+                  backgroundColor: "#C9847A",
+                  boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+                }}
+              >
+                Start Pro Trial
+              </Link>
+            </div>
+
+            {/* Business */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                backgroundColor: "#F5F0EA",
+                border: "1px solid #F0EBE6",
+              }}
+            >
+              <h3
+                className="font-bold text-lg mb-1"
+                style={{ color: "#2B2B2B" }}
+              >
+                Business
+              </h3>
+              <p
+                className="text-3xl font-bold mb-4"
+                style={{ color: "#C9847A" }}
+              >
+                $49.99
+                <span
+                  className="text-sm font-normal"
+                  style={{ color: "#7A6F68" }}
+                >
+                  /mo
+                </span>
+              </p>
+              <ul className="space-y-2 mb-6">
+                {[
+                  "Everything in Pro",
+                  "Team wardrobes",
+                  "Style analytics dashboard",
+                  "API access",
+                  "Priority support",
+                ].map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex items-center gap-2 text-sm"
+                    style={{ color: "#2B2B2B" }}
+                  >
+                    <Check size={14} style={{ color: "#C9847A" }} /> {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/auth"
+                className="block text-center py-2.5 rounded-xl font-semibold text-sm"
+                style={{
+                  backgroundColor: "#F5F0EA",
+                  color: "#2B2B2B",
+                  border: "1px solid #E5DDD5",
+                }}
+              >
+                Contact Sales
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="px-6 py-8" style={{ backgroundColor: "#2B2B2B" }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <img
+                src="/logo.png"
+                alt="Prompt Closet"
+                className="h-6 w-auto brightness-0 invert"
+              />
+              <span className="font-bold text-sm text-white">
+                Prompt Closet
+              </span>
+            </div>
+            <div className="flex gap-6">
+              <a href="#" className="text-xs" style={{ color: "#7A6F68" }}>
+                Privacy
+              </a>
+              <a href="#" className="text-xs" style={{ color: "#7A6F68" }}>
+                Terms
+              </a>
+              <a href="#" className="text-xs" style={{ color: "#7A6F68" }}>
+                Contact
+              </a>
+            </div>
+            <p className="text-xs" style={{ color: "#7A6F68" }}>
+              © 2026 Prompt Closet. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

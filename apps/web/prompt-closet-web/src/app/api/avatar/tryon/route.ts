@@ -21,9 +21,17 @@ export async function POST(request: Request) {
     });
 
     const data = await res.json();
-    const resultUrl = data.data?.[0]?.url;
+    // MiniMax returns base64 image in data.images[0]
+    const base64Image = data.images?.[0];
 
-    return NextResponse.json({ resultUrl: resultUrl || null });
+    if (!base64Image) {
+      return NextResponse.json({ resultUrl: null });
+    }
+
+    // Convert base64 to data URI for frontend display
+    const resultUrl = `data:image/png;base64,${base64Image}`;
+
+    return NextResponse.json({ resultUrl });
   } catch (err) {
     console.error("Try-on error:", err);
     return NextResponse.json({ resultUrl: null });

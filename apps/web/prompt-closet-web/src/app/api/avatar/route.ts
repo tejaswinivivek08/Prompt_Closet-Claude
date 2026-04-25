@@ -22,14 +22,18 @@ export async function POST(request: Request) {
     });
 
     const data = await res.json();
-    const avatarUrl = data.data?.[0]?.url;
+    // MiniMax returns base64 image in data.images[0]
+    const base64Image = data.images?.[0];
 
-    if (!avatarUrl) {
+    if (!base64Image) {
       return NextResponse.json(
         { error: "Failed to generate avatar" },
         { status: 500 },
       );
     }
+
+    // Convert base64 to data URI for frontend display
+    const avatarUrl = `data:image/png;base64,${base64Image}`;
 
     // Save avatar to Supabase
     const supabase = await createClient();

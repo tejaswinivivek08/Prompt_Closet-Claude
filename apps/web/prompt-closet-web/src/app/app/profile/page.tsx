@@ -28,12 +28,24 @@ export default async function ProfilePage() {
     .select("*", { count: "exact", head: true })
     .eq("user_id", session.user.id);
 
+  // Get most worn item
+  const { data: mostWornItems } = await supabase
+    .from("wardrobe_items")
+    .select("name")
+    .eq("user_id", session.user.id)
+    .eq("is_active", true)
+    .order("wear_count", { ascending: false })
+    .limit(1);
+
+  const mostWornItem = mostWornItems?.[0]?.name || undefined;
+
   return (
     <ProfileClient
       profile={profile}
       itemCount={itemCount || 0}
       outfitCount={outfitCount || 0}
       userId={session.user.id}
+      mostWornItem={mostWornItem}
     />
   );
 }
