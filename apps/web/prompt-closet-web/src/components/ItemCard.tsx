@@ -41,9 +41,18 @@ export default function ItemCard({ item, onClick }: ItemCardProps) {
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-card border border-border overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+      className="overflow-hidden cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg"
+      style={{
+        backgroundColor: "#FFFFFF",
+        borderRadius: 12,
+        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+        border: "1px solid #F0EBE6",
+      }}
     >
-      <div className="relative aspect-square bg-ivory">
+      <div
+        className="relative aspect-square"
+        style={{ backgroundColor: "#F5F0EA" }}
+      >
         <Image
           src={item.image_url}
           alt={item.suggested_name || item.category}
@@ -53,19 +62,23 @@ export default function ItemCard({ item, onClick }: ItemCardProps) {
         />
       </div>
       <div className="p-3">
-        <div className="flex items-center gap-1 mb-1">
-          <span className="text-xs font-medium text-rose-gold capitalize">
-            {item.category}
-          </span>
-        </div>
+        <span
+          className="text-xs font-medium capitalize"
+          style={{ color: "#C9847A" }}
+        >
+          {item.category}
+        </span>
         {item.colors && item.colors.length > 0 && (
-          <div className="flex gap-1">
+          <div className="flex gap-1 mt-1">
             {item.colors.slice(0, 3).map((color) => (
               <div
                 key={color}
-                className="w-3 h-3 rounded-full border border-border"
+                className="rounded-full"
                 style={{
+                  width: 12,
+                  height: 12,
                   backgroundColor: colorMap[color.toLowerCase()] || "#ccc",
+                  border: "1px solid #E5DDD5",
                 }}
               />
             ))}

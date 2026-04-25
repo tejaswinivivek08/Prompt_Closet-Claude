@@ -7,13 +7,16 @@ export default function AuthClient() {
   const [email, setEmail] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
   const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage("");
+    setMessage(null);
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -21,83 +24,154 @@ export default function AuthClient() {
     });
 
     if (error) {
-      setMessage(error.message);
+      setMessage({ text: error.message, type: "error" });
     } else {
-      setMessage("Check your email for the magic link!");
+      setMessage({
+        text: "Magic link sent! Check your email.",
+        type: "success",
+      });
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-ivory flex items-center justify-center px-4">
-      <div className="bg-white rounded-card shadow-sm border border-border p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-charcoal mb-2">
-          {mode === "signin" ? "Welcome back" : "Create your closet"}
-        </h1>
-        <p className="text-muted mb-6 text-sm">
-          {mode === "signin"
-            ? "Sign in to access your wardrobe"
-            : "Start building your AI wardrobe"}
-        </p>
-
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setMode("signin")}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === "signin"
-                ? "bg-rose-gold text-white"
-                : "bg-ivory text-charcoal"
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => setMode("signup")}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === "signup"
-                ? "bg-rose-gold text-white"
-                : "bg-ivory text-charcoal"
-            }`}
-          >
-            Sign Up
-          </button>
+    <div className="min-h-screen flex" style={{ backgroundColor: "#F5F0EA" }}>
+      {/* Left panel — branding */}
+      <div
+        className="hidden md:flex flex-col justify-between w-1/2 p-12"
+        style={{ backgroundColor: "#C9847A" }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <span className="text-white font-bold text-lg">P</span>
+          </div>
+          <span className="text-white font-bold text-xl">Prompt Closet</span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-charcoal mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-gold text-charcoal"
-            />
+        <div>
+          <h2
+            className="text-4xl font-bold text-white mb-4 leading-tight"
+            style={{ fontFamily: "Georgia, serif" }}
+          >
+            Your wardrobe,
+            <br />
+            intelligently styled.
+          </h2>
+          <p className="text-white/80 text-lg">
+            AI-powered personal styling for your everyday life.
+          </p>
+        </div>
+
+        <p className="text-white/60 text-sm">© 2026 Prompt Closet</p>
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex-1 flex flex-col items-center justify-center px-8">
+        <div className="w-full max-w-md">
+          {/* Mobile logo */}
+          <div className="md:hidden flex items-center gap-2 mb-10">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: "#C9847A" }}
+            >
+              <span className="text-white font-bold text-lg">P</span>
+            </div>
+            <span className="font-bold text-xl" style={{ color: "#2B2B2B" }}>
+              Prompt Closet
+            </span>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-rose-gold text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {loading
-              ? "Sending..."
-              : mode === "signin"
-                ? "Send Magic Link"
-                : "Create Account"}
-          </button>
-        </form>
-
-        {message && (
-          <p
-            className={`mt-4 text-sm text-center ${message.includes("Check") ? "text-green-600" : "text-red-500"}`}
-          >
-            {message}
+          <h1 className="text-2xl font-bold mb-1" style={{ color: "#2B2B2B" }}>
+            {mode === "signin" ? "Welcome back" : "Create your account"}
+          </h1>
+          <p className="mb-8 text-sm" style={{ color: "#7A6F68" }}>
+            {mode === "signin"
+              ? "Sign in to access your wardrobe"
+              : "Start building your AI wardrobe today"}
           </p>
-        )}
+
+          {/* Tab switcher */}
+          <div
+            className="flex rounded-xl p-1 mb-6"
+            style={{ backgroundColor: "#F5F0EA" }}
+          >
+            {(["signin", "signup"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setMessage(null);
+                }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all"
+                style={{
+                  backgroundColor: mode === m ? "#FFFFFF" : "transparent",
+                  color: mode === m ? "#2B2B2B" : "#7A6F68",
+                  boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                }}
+              >
+                {m === "signin" ? "Sign In" : "Sign Up"}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label
+                className="block text-sm font-medium mb-2"
+                style={{ color: "#2B2B2B" }}
+              >
+                Email address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="w-full px-4 py-3.5 rounded-xl text-sm transition-all"
+                style={{
+                  backgroundColor: "#F5F0EA",
+                  border: "1px solid #E5DDD5",
+                  color: "#2B2B2B",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-50"
+              style={{
+                backgroundColor: "#C9847A",
+                boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+              }}
+            >
+              {loading
+                ? "Sending..."
+                : mode === "signin"
+                  ? "Send Magic Link"
+                  : "Create Account"}
+            </button>
+          </form>
+
+          {message && (
+            <div
+              className="mt-4 px-4 py-3 rounded-xl text-sm text-center"
+              style={{
+                backgroundColor:
+                  message.type === "success" ? "#ECFDF5" : "#FEF2F2",
+                color: message.type === "success" ? "#059669" : "#DC2626",
+              }}
+            >
+              {message.text}
+            </div>
+          )}
+
+          <p className="mt-8 text-center text-xs" style={{ color: "#7A6F68" }}>
+            By continuing, you agree to our Terms of Service and Privacy Policy.
+          </p>
+        </div>
       </div>
     </div>
   );

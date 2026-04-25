@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Shirt } from "lucide-react";
 import ItemCard from "@/components/ItemCard";
 import FilterPill from "@/components/FilterPill";
 import ItemDetailModal from "@/components/ItemDetailModal";
@@ -54,36 +54,30 @@ export default function ClosetClient({
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-
     try {
-      // Upload to Supabase Storage
       const ext = file.name.split(".").pop();
       const path = `${userId}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("wardrobe-items")
         .upload(path, file, { contentType: file.type });
       if (uploadError) throw uploadError;
-
       const {
         data: { publicUrl },
       } = supabase.storage.from("wardrobe-items").getPublicUrl(path);
-
-      // Save to wardrobe_items
       const { data: newItem, error: insertError } = await supabase
         .from("wardrobe_items")
         .insert({
           user_id: userId,
           image_url: publicUrl,
-          category: "top", // default
+          category: "top",
         })
         .select()
         .single();
-
       if (insertError) throw insertError;
       setItems([newItem, ...items]);
     } catch (err) {
       console.error(err);
-      alert("Upload failed");
+      alert("Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -111,11 +105,26 @@ export default function ClosetClient({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-charcoal">My Closet</h1>
-        <label className="flex items-center gap-2 px-4 py-2 bg-rose-gold text-white rounded-lg cursor-pointer hover:opacity-90 transition-opacity">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: "#2B2B2B" }}>
+            My Closet
+          </h1>
+          <p className="text-sm" style={{ color: "#7A6F68" }}>
+            {items.length} items
+          </p>
+        </div>
+        <label
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full cursor-pointer transition-all hover:opacity-90"
+          style={{
+            backgroundColor: "#C9847A",
+            color: "#FFFFFF",
+            boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+          }}
+        >
           <Plus size={18} />
-          <span>Add Item</span>
+          <span className="text-sm font-semibold">Add Item</span>
           <input
             type="file"
             accept="image/*"
@@ -127,7 +136,7 @@ export default function ClosetClient({
       </div>
 
       {/* Filter pills */}
-      <div className="flex gap-2 flex-wrap mb-6">
+      <div className="flex gap-2 flex-wrap mb-8">
         {CATEGORIES.map((cat) => (
           <FilterPill
             key={cat}
@@ -140,17 +149,39 @@ export default function ClosetClient({
       </div>
 
       {uploading && (
-        <div className="text-center py-8 text-muted">Uploading...</div>
+        <div className="flex items-center justify-center gap-3 py-16">
+          <div
+            className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+            style={{ borderColor: "#C9847A", borderTopColor: "transparent" }}
+          />
+          <span className="text-sm" style={{ color: "#7A6F68" }}>
+            Uploading...
+          </span>
+        </div>
       )}
 
-      {filtered.length === 0 && !uploading ? (
-        <div className="text-center py-16">
-          <p className="text-muted mb-4">
-            Your closet is empty. Add your first item!
+      {filtered.length === 0 && !uploading && (
+        <div className="flex flex-col items-center justify-center py-24">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+            style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
+          >
+            <Shirt size={28} style={{ color: "#C9847A" }} />
+          </div>
+          <p
+            className="text-base font-medium mb-1"
+            style={{ color: "#2B2B2B" }}
+          >
+            Your closet is empty
+          </p>
+          <p className="text-sm" style={{ color: "#7A6F68" }}>
+            Add your first item to get started
           </p>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      )}
+
+      {filtered.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map((item) => (
             <ItemCard
               key={item.id}

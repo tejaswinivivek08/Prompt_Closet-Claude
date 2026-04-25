@@ -1,6 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-ivory: #F5F0EA;
+  --color-rose-gold: #C9847A;
+  --color-charcoal: #2B2B2B;
+  --color-border: #E5DDD5;
+  --color-muted: #7A6F68;
+  --radius-card: 12px;
+  --font-family-inter: var(--font-inter), sans-serif;
+}
 
 :root {
   --font-inter: "Inter", sans-serif;
@@ -10,4 +18,23 @@ body {
   background-color: #F5F0EA;
   color: #2B2B2B;
   font-family: var(--font-inter);
+}
+
+::selection {
+  background-color: #C9847A;
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F0EA;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5DDD5;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C9847A;
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { Upload, Sparkles, Loader2, Check } from "lucide-react";
+import { Upload, Sparkles, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function TwinClient({
@@ -23,6 +23,14 @@ export default function TwinClient({
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   const handleFile = async (file: File) => {
     setGenerating(true);
     try {
@@ -39,7 +47,7 @@ export default function TwinClient({
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to generate avatar");
+      alert("Failed to generate avatar. Please try again.");
     } finally {
       setGenerating(false);
     }
@@ -66,36 +74,37 @@ export default function TwinClient({
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) handleFile(file);
-  };
-
   return (
     <div>
-      <h1 className="text-2xl font-bold text-charcoal mb-2">Digital Twin</h1>
-      <p className="text-muted mb-6">
-        Create your AI avatar and try on outfits virtually.
-      </p>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-1" style={{ color: "#2B2B2B" }}>
+          Digital Twin
+        </h1>
+        <p className="text-sm" style={{ color: "#7A6F68" }}>
+          Create your AI avatar and try on outfits virtually.
+        </p>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Avatar section */}
-        <div className="bg-white rounded-card border border-border p-6">
-          <h2 className="font-bold text-charcoal mb-4">Your Avatar</h2>
+        {/* Avatar card */}
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            backgroundColor: "#FFFFFF",
+            boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+            border: "1px solid #F0EBE6",
+          }}
+        >
+          <h2 className="font-bold text-base mb-4" style={{ color: "#2B2B2B" }}>
+            Your Avatar
+          </h2>
 
           {avatar ? (
-            <div className="relative aspect-[3/4] bg-ivory rounded-lg overflow-hidden mb-4">
+            <div
+              className="relative rounded-2xl overflow-hidden mb-5"
+              style={{ aspectRatio: "3/4", backgroundColor: "#F5F0EA" }}
+            >
               <Image
                 src={tryonResult || avatar.avatar_url}
                 alt="Your digital twin"
@@ -110,15 +119,37 @@ export default function TwinClient({
                 setDragging(true);
               }}
               onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                const file = e.dataTransfer.files[0];
+                if (file?.type.startsWith("image/")) handleFile(file);
+              }}
               onClick={() => fileRef.current?.click()}
-              className={`aspect-[3/4] bg-ivory rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors mb-4 ${dragging ? "border-rose-gold" : "border-border"}`}
+              className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer mb-5 transition-all"
+              style={{
+                aspectRatio: "3/4",
+                borderColor: dragging ? "#C9847A" : "#E5DDD5",
+                backgroundColor: dragging
+                  ? "rgba(201,132,122,0.05)"
+                  : "#F5F0EA",
+              }}
             >
-              <Upload size={40} className="text-muted mb-3" />
-              <p className="text-sm text-charcoal font-medium">
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
+                style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
+              >
+                <Upload size={24} style={{ color: "#C9847A" }} />
+              </div>
+              <p
+                className="text-sm font-medium mb-1"
+                style={{ color: "#2B2B2B" }}
+              >
                 Drop your selfie here
               </p>
-              <p className="text-xs text-muted mt-1">or click to upload</p>
+              <p className="text-xs" style={{ color: "#7A6F68" }}>
+                or click to upload
+              </p>
             </div>
           )}
 
@@ -133,74 +164,126 @@ export default function TwinClient({
             }}
           />
 
-          {generating && (
-            <div className="flex items-center justify-center gap-2 py-3 text-muted">
-              <Loader2 size={18} className="animate-spin" />
-              <span>Generating avatar...</span>
+          {generating ? (
+            <div className="flex items-center justify-center gap-2 py-3">
+              <div
+                className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                style={{
+                  borderColor: "#C9847A",
+                  borderTopColor: "transparent",
+                }}
+              />
+              <span className="text-sm" style={{ color: "#7A6F68" }}>
+                Generating avatar...
+              </span>
             </div>
-          )}
-
-          {!generating && !avatar && (
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="w-full py-3 bg-rose-gold text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
-            >
-              Generate Avatar
-            </button>
+          ) : (
+            !avatar && (
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
+                style={{
+                  backgroundColor: "#C9847A",
+                  boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+                }}
+              >
+                Generate Avatar
+              </button>
+            )
           )}
         </div>
 
-        {/* Outfit selection */}
-        <div className="bg-white rounded-card border border-border p-6">
-          <h2 className="font-bold text-charcoal mb-4">Select Outfit</h2>
-          <p className="text-sm text-muted mb-4">
-            Pick items from your closet to try on
+        {/* Outfit selection card */}
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            backgroundColor: "#FFFFFF",
+            boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+            border: "1px solid #F0EBE6",
+          }}
+        >
+          <h2 className="font-bold text-base mb-1" style={{ color: "#2B2B2B" }}>
+            Select Outfit
+          </h2>
+          <p className="text-xs mb-4" style={{ color: "#7A6F68" }}>
+            Tap items from your closet to try on
           </p>
 
-          <div className="grid grid-cols-3 gap-2 mb-4 max-h-64 overflow-y-auto">
-            {initialItems.map((item) => {
-              const isSelected = selectedOutfit.includes(item.id);
-              return (
-                <div
-                  key={item.id}
-                  onClick={() =>
-                    setSelectedOutfit(
-                      isSelected
-                        ? selectedOutfit.filter((id) => id !== item.id)
-                        : [...selectedOutfit, item.id],
-                    )
-                  }
-                  className={`relative aspect-square bg-ivory rounded-lg overflow-hidden cursor-pointer border-2 transition-colors ${isSelected ? "border-rose-gold" : "border-transparent"}`}
-                >
-                  <Image
-                    src={item.image_url}
-                    alt={item.suggested_name || item.category}
-                    fill
-                    className="object-cover"
-                    sizes="100px"
-                  />
-                  {isSelected && (
-                    <div className="absolute top-1 right-1 bg-rose-gold rounded-full p-0.5">
-                      <Check size={12} className="text-white" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {initialItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                No items in your closet yet
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 mb-5 max-h-72 overflow-y-auto pr-1">
+              {initialItems.map((item) => {
+                const isSelected = selectedOutfit.includes(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() =>
+                      setSelectedOutfit(
+                        isSelected
+                          ? selectedOutfit.filter((id) => id !== item.id)
+                          : [...selectedOutfit, item.id],
+                      )
+                    }
+                    className="relative rounded-xl overflow-hidden cursor-pointer transition-all"
+                    style={{
+                      aspectRatio: "1",
+                      border: isSelected
+                        ? "2px solid #C9847A"
+                        : "2px solid transparent",
+                    }}
+                  >
+                    <Image
+                      src={item.image_url}
+                      alt={item.suggested_name || item.category}
+                      fill
+                      className="object-cover"
+                      sizes="100px"
+                    />
+                    {isSelected && (
+                      <div
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: "#C9847A" }}
+                      >
+                        <Check size={11} className="text-white" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <button
             onClick={handleTryOn}
             disabled={selectedOutfit.length === 0 || !avatar || tryonLoading}
-            className="w-full py-3 bg-charcoal text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-40"
+            style={{
+              backgroundColor: "#C9847A",
+              boxShadow:
+                selectedOutfit.length > 0 && avatar
+                  ? "0 4px 16px rgba(201,132,122,0.35)"
+                  : "none",
+            }}
           >
             {tryonLoading ? (
               <>
-                <Loader2 size={18} className="animate-spin" /> Generating...
+                <div
+                  className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                  style={{
+                    borderColor: "#FFFFFF",
+                    borderTopColor: "transparent",
+                  }}
+                />
+                Generating...
               </>
             ) : (
               <>
-                <Sparkles size={18} /> Try Outfit On Me
+                <Sparkles size={16} /> Try Outfit On Me
               </>
             )}
           </button>

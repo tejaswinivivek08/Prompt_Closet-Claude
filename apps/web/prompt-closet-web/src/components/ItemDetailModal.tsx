@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2, Edit2, Check, X as XIcon } from "lucide-react";
+import { X, Trash2, Edit2, Check } from "lucide-react";
 import Image from "next/image";
 
 interface ItemDetailModalProps {
@@ -10,6 +10,18 @@ interface ItemDetailModalProps {
   onDelete: (id: string) => void;
   onUpdate: (id: string, data: any) => void;
 }
+
+const occasionColors: Record<string, string> = {
+  casual: "#7B9E87",
+  office: "#4A7B9D",
+  festive: "#C9A96E",
+  wedding: "#C9A96E",
+  party: "#B5A0C9",
+  temple: "#C9847A",
+  beach: "#5BA8C4",
+  date: "#D4847C",
+  sport: "#6B8E6B",
+};
 
 export default function ItemDetailModal({
   item,
@@ -28,52 +40,60 @@ export default function ItemDetailModal({
     setEditing(false);
   };
 
-  const occasionColors: Record<string, string> = {
-    casual: "#7B9E87",
-    office: "#4A7B9D",
-    festive: "#C9A96E",
-    wedding: "#C9A96E",
-    party: "#B5A0C9",
-    temple: "#C9847A",
-    beach: "#5BA8C4",
-    date: "#D4847C",
-    sport: "#6B8E6B",
-  };
-
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-50 shadow-xl overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-border p-4 flex items-center justify-between">
-          <h2 className="font-bold text-charcoal">Item Details</h2>
-          <div className="flex gap-2">
+      <div
+        className="fixed inset-0 z-50"
+        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        onClick={onClose}
+      />
+      <div
+        className="fixed right-0 top-0 h-full w-full max-w-md z-50 overflow-y-auto"
+        style={{
+          backgroundColor: "#FFFFFF",
+          boxShadow: "-4px 0 32px rgba(0,0,0,0.12)",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="sticky top-0 bg-white z-10 px-6 py-5 flex items-center justify-between"
+          style={{ borderBottom: "1px solid #E5DDD5" }}
+        >
+          <h2 className="font-bold text-lg" style={{ color: "#2B2B2B" }}>
+            Item Details
+          </h2>
+          <div className="flex items-center gap-2">
             {editing ? (
               <>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+                  style={{ backgroundColor: "#C9847A" }}
                 >
-                  <Check size={18} />
+                  <Check size={15} /> {saving ? "Saving..." : "Save"}
                 </button>
                 <button
                   onClick={() => setEditing(false)}
-                  className="p-2 text-muted hover:bg-ivory rounded-lg"
+                  className="p-2 rounded-lg transition-colors"
+                  style={{ color: "#7A6F68", backgroundColor: "#F5F0EA" }}
                 >
-                  <XIcon size={18} />
+                  <X size={18} />
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => setEditing(true)}
-                  className="p-2 text-rose-gold hover:bg-rose-gold/10 rounded-lg"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+                  style={{ backgroundColor: "#C9847A" }}
                 >
-                  <Edit2 size={18} />
+                  <Edit2 size={15} /> Edit
                 </button>
                 <button
                   onClick={onClose}
-                  className="p-2 text-muted hover:bg-ivory rounded-lg"
+                  className="p-2 rounded-lg transition-colors"
+                  style={{ color: "#7A6F68", backgroundColor: "#F5F0EA" }}
                 >
                   <X size={18} />
                 </button>
@@ -82,20 +102,27 @@ export default function ItemDetailModal({
           </div>
         </div>
 
-        <div className="p-4">
-          <div className="relative aspect-square bg-ivory rounded-lg overflow-hidden mb-4">
+        {/* Content */}
+        <div className="p-6">
+          <div
+            className="relative aspect-square rounded-2xl overflow-hidden mb-6"
+            style={{ backgroundColor: "#F5F0EA" }}
+          >
             <Image
               src={item.image_url}
-              alt={item.suggested_name}
+              alt={item.suggested_name || item.category}
               fill
               className="object-contain"
             />
           </div>
 
           {editing ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-muted uppercase">
+                <label
+                  className="block text-xs font-medium mb-1.5 uppercase tracking-wide"
+                  style={{ color: "#7A6F68" }}
+                >
                   Name
                 </label>
                 <input
@@ -103,11 +130,20 @@ export default function ItemDetailModal({
                   onChange={(e) =>
                     setForm({ ...form, suggested_name: e.target.value })
                   }
-                  className="w-full mt-1 px-3 py-2 border border-border rounded-lg text-charcoal"
+                  className="w-full px-4 py-3 rounded-xl text-sm"
+                  style={{
+                    backgroundColor: "#F5F0EA",
+                    border: "1px solid #E5DDD5",
+                    color: "#2B2B2B",
+                    outline: "none",
+                  }}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted uppercase">
+                <label
+                  className="block text-xs font-medium mb-1.5 uppercase tracking-wide"
+                  style={{ color: "#7A6F68" }}
+                >
                   Category
                 </label>
                 <select
@@ -115,7 +151,13 @@ export default function ItemDetailModal({
                   onChange={(e) =>
                     setForm({ ...form, category: e.target.value })
                   }
-                  className="w-full mt-1 px-3 py-2 border border-border rounded-lg text-charcoal"
+                  className="w-full px-4 py-3 rounded-xl text-sm"
+                  style={{
+                    backgroundColor: "#F5F0EA",
+                    border: "1px solid #E5DDD5",
+                    color: "#2B2B2B",
+                    outline: "none",
+                  }}
                 >
                   {[
                     "top",
@@ -135,36 +177,51 @@ export default function ItemDetailModal({
             </div>
           ) : (
             <>
-              <h3 className="text-lg font-bold text-charcoal mb-1">
+              <h3
+                className="text-xl font-bold mb-1"
+                style={{ color: "#2B2B2B" }}
+              >
                 {item.suggested_name ||
                   `${(item.colors?.[0] || "").charAt(0).toUpperCase()}${(item.colors?.[0] || "").slice(1)} ${item.category}`}
               </h3>
-              <p className="text-sm text-muted capitalize mb-4">
+              <p
+                className="text-sm capitalize mb-5"
+                style={{ color: "#7A6F68" }}
+              >
                 {item.category}
                 {item.subcategory ? ` · ${item.subcategory}` : ""}
               </p>
 
-              {item.colors && item.colors.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-xs font-medium text-muted uppercase mb-2">
+              {item.colors?.length > 0 && (
+                <div className="mb-5">
+                  <p
+                    className="text-xs font-medium uppercase tracking-wide mb-2"
+                    style={{ color: "#7A6F68" }}
+                  >
                     Colors
                   </p>
-                  <p className="text-sm text-charcoal">
+                  <p
+                    className="text-sm font-medium"
+                    style={{ color: "#2B2B2B" }}
+                  >
                     {item.colors.join(", ")}
                   </p>
                 </div>
               )}
 
-              {item.occasions && item.occasions.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-xs font-medium text-muted uppercase mb-2">
+              {item.occasions?.length > 0 && (
+                <div className="mb-5">
+                  <p
+                    className="text-xs font-medium uppercase tracking-wide mb-2"
+                    style={{ color: "#7A6F68" }}
+                  >
                     Occasions
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {item.occasions.map((occ: string) => (
                       <span
                         key={occ}
-                        className="px-3 py-1 rounded-full text-xs font-medium text-white"
+                        className="px-3 py-1 rounded-full text-xs font-semibold text-white"
                         style={{
                           backgroundColor:
                             occasionColors[occ.toLowerCase()] || "#7B9E87",
@@ -178,44 +235,57 @@ export default function ItemDetailModal({
               )}
 
               {item.pattern && (
-                <div className="mb-4">
-                  <p className="text-xs font-medium text-muted uppercase mb-1">
+                <div className="mb-5">
+                  <p
+                    className="text-xs font-medium uppercase tracking-wide mb-1"
+                    style={{ color: "#7A6F68" }}
+                  >
                     Pattern
                   </p>
-                  <p className="text-sm text-charcoal capitalize">
+                  <p
+                    className="text-sm capitalize"
+                    style={{ color: "#2B2B2B" }}
+                  >
                     {item.pattern}
                   </p>
                 </div>
               )}
 
               {item.fabric && (
-                <div className="mb-4">
-                  <p className="text-xs font-medium text-muted uppercase mb-1">
+                <div className="mb-5">
+                  <p
+                    className="text-xs font-medium uppercase tracking-wide mb-1"
+                    style={{ color: "#7A6F68" }}
+                  >
                     Fabric
                   </p>
-                  <p className="text-sm text-charcoal capitalize">
+                  <p
+                    className="text-sm capitalize"
+                    style={{ color: "#2B2B2B" }}
+                  >
                     {item.fabric}
                   </p>
                 </div>
               )}
 
-              {item.wear_count !== undefined && item.wear_count > 0 && (
-                <p className="text-sm text-muted mb-4">
+              {item.wear_count > 0 && (
+                <p className="text-sm" style={{ color: "#7A6F68" }}>
                   Worn {item.wear_count} times
                 </p>
               )}
             </>
           )}
 
-          <div className="mt-6 pt-4 border-t border-border">
+          <div className="mt-8 pt-6" style={{ borderTop: "1px solid #E5DDD5" }}>
             <button
               onClick={() => {
-                if (confirm("Delete this item?")) onDelete(item.id);
+                if (confirm("Delete this item? This cannot be undone."))
+                  onDelete(item.id);
               }}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all"
+              style={{ backgroundColor: "#FEF2F2", color: "#DC2626" }}
             >
-              <Trash2 size={16} />
-              Delete Item
+              <Trash2 size={16} /> Delete Item
             </button>
           </div>
         </div>

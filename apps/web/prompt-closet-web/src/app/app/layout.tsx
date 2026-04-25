@@ -13,9 +13,7 @@ export default async function AppLayout({
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session) {
-    redirect("/auth");
-  }
+  if (!session) redirect("/auth");
 
   const navItems = [
     { href: "/app/closet", label: "Closet", icon: Shirt },
@@ -25,33 +23,58 @@ export default async function AppLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-ivory">
+    <div className="min-h-screen" style={{ backgroundColor: "#F5F0EA" }}>
       {/* Top nav */}
-      <nav className="bg-white border-b border-border sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      <nav
+        className="sticky top-0 z-50"
+        style={{
+          backgroundColor: "rgba(255,255,255,0.95)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid #E5DDD5",
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-6">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <span className="text-rose-gold font-bold text-lg">
+            {/* Logo */}
+            <Link href="/app/closet" className="flex items-center gap-2">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: "#C9847A" }}
+              >
+                <span className="text-white font-bold text-sm">P</span>
+              </div>
+              <span
+                className="font-bold text-base"
+                style={{ color: "#2B2B2B" }}
+              >
                 Prompt Closet
               </span>
-            </div>
+            </Link>
+
+            {/* Nav links */}
             <div className="flex items-center gap-1">
               {navItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-charcoal hover:bg-ivory transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all hover:opacity-80"
+                  style={{ color: "#2B2B2B" }}
                 >
-                  <Icon size={16} />
+                  <Icon size={15} />
                   <span className="hidden sm:inline">{label}</span>
                 </Link>
               ))}
-              <form action="/api/auth/signout" method="POST" className="inline">
+              <form
+                action="/api/auth/signout"
+                method="POST"
+                className="inline ml-2"
+              >
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted hover:bg-ivory transition-colors ml-2"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all hover:opacity-70"
+                  style={{ color: "#7A6F68" }}
                 >
-                  <LogOut size={16} />
+                  <LogOut size={15} />
                   <span className="hidden sm:inline">Sign out</span>
                 </button>
               </form>
@@ -60,7 +83,7 @@ export default async function AppLayout({
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">{children}</main>
+      <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>
     </div>
   );
 }

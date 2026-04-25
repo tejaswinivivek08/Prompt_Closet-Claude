@@ -57,46 +57,100 @@ export default function ProfileClient({
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-charcoal mb-6">Profile</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-1" style={{ color: "#2B2B2B" }}>
+          Profile
+        </h1>
+        <p className="text-sm" style={{ color: "#7A6F68" }}>
+          Your personal style settings
+        </p>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-card border border-border p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-rose-gold/10 rounded-full flex items-center justify-center">
-            <Shirt size={20} className="text-rose-gold" />
+        <div
+          className="rounded-2xl p-5 flex items-center gap-4"
+          style={{
+            backgroundColor: "#FFFFFF",
+            boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+            border: "1px solid #F0EBE6",
+          }}
+        >
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
+          >
+            <Shirt size={22} style={{ color: "#C9847A" }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-charcoal">{itemCount}</p>
-            <p className="text-xs text-muted">Wardrobe Items</p>
+            <p className="text-2xl font-bold" style={{ color: "#2B2B2B" }}>
+              {itemCount}
+            </p>
+            <p className="text-xs" style={{ color: "#7A6F68" }}>
+              Wardrobe Items
+            </p>
           </div>
         </div>
-        <div className="bg-white rounded-card border border-border p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-rose-gold/10 rounded-full flex items-center justify-center">
-            <Sparkles size={20} className="text-rose-gold" />
+        <div
+          className="rounded-2xl p-5 flex items-center gap-4"
+          style={{
+            backgroundColor: "#FFFFFF",
+            boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+            border: "1px solid #F0EBE6",
+          }}
+        >
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
+          >
+            <Sparkles size={22} style={{ color: "#C9847A" }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-charcoal">{outfitCount}</p>
-            <p className="text-xs text-muted">Outfits Created</p>
+            <p className="text-2xl font-bold" style={{ color: "#2B2B2B" }}>
+              {outfitCount}
+            </p>
+            <p className="text-xs" style={{ color: "#7A6F68" }}>
+              Outfits Created
+            </p>
           </div>
         </div>
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-card border border-border p-6 space-y-5">
+      <div
+        className="rounded-2xl p-6 space-y-6"
+        style={{
+          backgroundColor: "#FFFFFF",
+          boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+          border: "1px solid #F0EBE6",
+        }}
+      >
         <div>
-          <label className="block text-sm font-medium text-charcoal mb-1">
+          <label
+            className="block text-sm font-medium mb-2"
+            style={{ color: "#2B2B2B" }}
+          >
             Display Name
           </label>
           <input
             type="text"
             value={form.full_name}
             onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-            className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-gold text-charcoal"
+            className="w-full px-4 py-3.5 rounded-xl text-sm transition-all"
+            style={{
+              backgroundColor: "#F5F0EA",
+              border: "1px solid #E5DDD5",
+              color: "#2B2B2B",
+              outline: "none",
+            }}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-charcoal mb-2">
+          <label
+            className="block text-sm font-medium mb-3"
+            style={{ color: "#2B2B2B" }}
+          >
             Skin Tone
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -104,24 +158,38 @@ export default function ProfileClient({
               <button
                 key={tone.id}
                 onClick={() => setForm({ ...form, skin_tone_palette: tone.id })}
-                className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
-                  form.skin_tone_palette === tone.id
-                    ? "border-rose-gold bg-rose-gold/5"
-                    : "border-border hover:border-rose-gold"
-                }`}
+                className="flex items-center gap-2 p-2.5 rounded-xl transition-all"
+                style={{
+                  backgroundColor:
+                    form.skin_tone_palette === tone.id
+                      ? "rgba(201,132,122,0.08)"
+                      : "#F5F0EA",
+                  border:
+                    form.skin_tone_palette === tone.id
+                      ? "2px solid #C9847A"
+                      : "2px solid transparent",
+                }}
               >
                 <div
-                  className="w-6 h-6 rounded-full border border-border"
+                  className="w-7 h-7 rounded-full"
                   style={{ backgroundColor: tone.color }}
                 />
-                <span className="text-xs text-charcoal">{tone.label}</span>
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: "#2B2B2B" }}
+                >
+                  {tone.label}
+                </span>
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-charcoal mb-2">
+          <label
+            className="block text-sm font-medium mb-3"
+            style={{ color: "#2B2B2B" }}
+          >
             Style Preferences
           </label>
           <div className="flex gap-2 flex-wrap">
@@ -129,11 +197,18 @@ export default function ProfileClient({
               <button
                 key={pref}
                 onClick={() => toggleStylePref(pref)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  form.style_preferences.includes(pref)
-                    ? "bg-rose-gold text-white"
-                    : "bg-ivory text-charcoal border border-border"
-                }`}
+                className="px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: form.style_preferences.includes(pref)
+                    ? "#C9847A"
+                    : "#F5F0EA",
+                  color: form.style_preferences.includes(pref)
+                    ? "#FFFFFF"
+                    : "#2B2B2B",
+                  border: form.style_preferences.includes(pref)
+                    ? "none"
+                    : "1px solid #E5DDD5",
+                }}
               >
                 {pref.charAt(0).toUpperCase() + pref.slice(1)}
               </button>
@@ -144,9 +219,13 @@ export default function ProfileClient({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-3 bg-rose-gold text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50"
+          style={{
+            backgroundColor: "#C9847A",
+            boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+          }}
         >
-          <Save size={18} />
+          <Save size={17} />
           {saving ? "Saving..." : "Save Profile"}
         </button>
       </div>
