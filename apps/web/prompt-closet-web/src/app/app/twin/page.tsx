@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import TwinClient from "./TwinClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function TwinPage() {
   const supabase = await createClient();
   const {

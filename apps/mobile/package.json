@@ -17,8 +17,10 @@
     "@react-navigation/native-stack": "^7.0.0",
     "@supabase/supabase-js": "^2.45.0",
     "@types/react": "~19.2.10",
+    "babel-preset-expo": "^55.0.17",
     "expo": "^55.0.15",
     "expo-asset": "~55.0.15",
+    "expo-build-properties": "~55.0.13",
     "expo-constants": "~55.0.14",
     "expo-font": "~55.0.6",
     "expo-image": "~55.0.8",
@@ -37,6 +39,7 @@
     "@babel/core": "^7.25.2",
     "babel-plugin-module-resolver": "^5.0.3",
     "pg": "^8.20.0",
+    "sharp": "^0.34.5",
     "supabase": "^2.92.1",
     "typescript": "~5.9.2"
   },

@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import StyleClient from "./StyleClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function StylePage() {
   const supabase = await createClient();
   const {

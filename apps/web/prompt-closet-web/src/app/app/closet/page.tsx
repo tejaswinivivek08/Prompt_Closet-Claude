@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ClosetClient from "./ClosetClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function ClosetPage() {
   const supabase = await createClient();
   const {

@@ -20,6 +20,7 @@ eggs/
 lib/
 !scripts/hooks/lib/
 !apps/mobile/src/lib/
+!apps/web/prompt-closet-web/src/lib/
 lib64/
 parts/
 sdist/
