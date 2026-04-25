@@ -17,6 +17,23 @@ export default async function ProfilePage() {
     .eq("id", session.user.id)
     .single();
 
+  // Fetch the active Digital Twin avatar
+  const { data: avatars } = await supabase
+    .from("user_avatars")
+    .select("avatar_url")
+    .eq("user_id", session.user.id)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const twinAvatarUrl = avatars?.[0]?.avatar_url || null;
+
+  // Merge twin avatar into profile for display
+  const profileWithTwin = {
+    ...profile,
+    avatar_url: twinAvatarUrl || profile?.avatar_url || "",
+  };
+
   const { count: itemCount } = await supabase
     .from("wardrobe_items")
     .select("*", { count: "exact", head: true })
@@ -41,7 +58,7 @@ export default async function ProfilePage() {
 
   return (
     <ProfileClient
-      profile={profile}
+      profile={profileWithTwin}
       itemCount={itemCount || 0}
       outfitCount={outfitCount || 0}
       userId={session.user.id}

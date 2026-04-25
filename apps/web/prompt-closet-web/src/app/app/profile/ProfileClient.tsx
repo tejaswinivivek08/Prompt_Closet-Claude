@@ -235,20 +235,44 @@ export default function ProfileClient({
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1" style={{ color: "#2B2B2B" }}>
-          Profile
-        </h1>
-        <p className="text-sm" style={{ color: "#7A6F68" }}>
-          Your personal style settings
-        </p>
+      {/* Header with user info */}
+      <div className="mb-8 flex items-center gap-4">
+        {/* Small avatar circle */}
+        <div className="relative flex-shrink-0">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Profile"
+              className="w-14 h-14 rounded-full object-cover"
+              style={{ border: "2px solid #C9847A" }}
+            />
+          ) : (
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold"
+              style={{ backgroundColor: "#C9847A", color: "#FFFFFF" }}
+            >
+              {initials}
+            </div>
+          )}
+        </div>
+        <div>
+          <h1
+            className="text-2xl font-bold mb-0.5"
+            style={{ color: "#2B2B2B" }}
+          >
+            {form.full_name || "Profile"}
+          </h1>
+          <p className="text-sm" style={{ color: "#7A6F68" }}>
+            Your personal style settings
+          </p>
+        </div>
       </div>
 
       {/* Profile Picture Section */}
       <div className="rounded-2xl p-6 mb-6" style={cardStyle}>
         <div className="flex items-center gap-6">
           {/* Avatar */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
