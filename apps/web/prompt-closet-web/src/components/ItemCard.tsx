@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-
 interface ItemCardProps {
   item: {
     id: string;
@@ -53,12 +51,10 @@ export default function ItemCard({ item, onClick }: ItemCardProps) {
         className="relative aspect-square"
         style={{ backgroundColor: "#F5F0EA" }}
       >
-        <Image
+        <img
           src={item.image_url}
           alt={item.suggested_name || item.category}
-          fill
-          className="object-cover"
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          className="object-cover w-full h-full"
         />
       </div>
       <div className="p-3">
