@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/images/txt2img";
+const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/image_generation";
 
 export async function POST(request: Request) {
   const { avatarUrl, outfitItemIds } = await request.json();
@@ -52,6 +52,8 @@ export async function POST(request: Request) {
         model: "image-01",
         prompt,
         image_urls: [avatarUrl],
+        num_images: 1,
+        aspect_ratio: "3:4",
       }),
     });
 
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json();
-    const resultUrl = data.data?.[0]?.url;
+    const resultUrl = data.data?.image_urls?.[0];
 
     if (!resultUrl) {
       return NextResponse.json(

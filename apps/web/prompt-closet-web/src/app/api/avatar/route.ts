@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/images/txt2img";
-const MINIMAX_FAST_URL = "https://api.minimaxi.chat/v1/images/short2img";
+const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/image_generation";
 
 export async function POST(request: Request) {
   const { imageData, userId, regenerate, customPrompt } = await request.json();
@@ -45,6 +44,8 @@ export async function POST(request: Request) {
     const requestBody: Record<string, unknown> = {
       model: "image-01",
       prompt,
+      num_images: 1,
+      aspect_ratio: "3:4",
     };
 
     // If we have an image URL (for regeneration), pass it
@@ -74,10 +75,10 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json();
-    const avatarUrl = data.data?.[0]?.url;
+    const avatarUrl = data.data?.image_urls?.[0];
 
     if (!avatarUrl) {
-      console.error("No avatar URL in response:", data);
+      console.error("No avatar URL in response:", JSON.stringify(data));
       return NextResponse.json(
         { error: "Failed to generate avatar - no URL returned" },
         { status: 500 },
@@ -132,6 +133,7 @@ export async function GET() {
       body: JSON.stringify({
         model: "image-01",
         prompt: "test",
+        num_images: 1,
       }),
     });
 

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/images/txt2img";
+const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/image_generation";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
 interface TagResult {
@@ -30,7 +30,7 @@ const FALLBACK_TAGS: TagResult = {
   style_notes: "",
 };
 
-// Analyze image using MiniMax (for image analysis, use prompt to describe)
+// Analyze image using MiniMax image generation with vision prompt
 async function analyzeWithMiniMax(
   imageUrl: string,
   apiKey: string,
@@ -40,19 +40,8 @@ async function analyzeWithMiniMax(
   }
 
   try {
-    const prompt = `Analyze this clothing item and respond with ONLY a valid JSON object (no markdown, no explanation):
-{
-  "category": "top|bottom|dress|outerwear|footwear|accessory|traditional",
-  "subcategory": "specific type like kurti, jeans, saree, etc.",
-  "colors": ["main colors in hex like #FF0000"],
-  "pattern": "solid|striped|floral|printed|embroidered|checks",
-  "fabric": "cotton|silk|linen|polyester|wool|chiffon|georgette|denim|other",
-  "occasions": ["casual","office","festive","wedding","party","temple","beach","date","sport"],
-  "formality_score": 1-5 (1=very casual, 5=very formal),
-  "season": ["summer","winter","monsoon","all-season"],
-  "suggested_name": "short descriptive name for this item",
-  "style_notes": "brief fashion notes about the item"
-}`;
+    // Use a vision prompt to analyze the image
+    const prompt = `Analyze this clothing image and describe it briefly for tagging. Return only: category (top/bottom/dress/outerwear/footwear/accessory/traditional), main colors (1-2 hex), pattern (solid/striped/floral/printed/embroidered/checks), fabric type if visible, occasion (casual/office/festive/wedding/party/temple/beach/date/sport), and a short name. Example: "Blue cotton kurta for festive occasions"`;
 
     const res = await fetch(MINIMAX_API_URL, {
       method: "POST",
@@ -64,6 +53,7 @@ async function analyzeWithMiniMax(
         model: "image-01",
         prompt,
         image_urls: [imageUrl],
+        num_images: 1,
       }),
     });
 
@@ -74,16 +64,15 @@ async function analyzeWithMiniMax(
     }
 
     const data = await res.json();
-    const content = data.data?.[0]?.url || data.data?.[0]?.base64;
+    const imageResult = data.data?.image_urls?.[0];
 
-    if (!content) {
-      console.error("No content in MiniMax response");
+    if (!imageResult) {
+      console.error("No image URL in MiniMax response");
       return null;
     }
 
-    // MiniMax returns an image, not text - need to parse differently
-    // Actually MiniMax's image-01 doesn't do vision like this
-    // Let's try text description endpoint
+    // MiniMax image-01 generates an image description as a new image
+    // We can't extract structured tags from it - need Claude Vision for that
     return null;
   } catch (err) {
     console.error("MiniMax Vision error:", err);
@@ -223,7 +212,7 @@ export async function POST(request: Request) {
   const miniMaxKey = process.env.MINIMAX_API_KEY || "";
   let tags: TagResult | null = null;
 
-  // Try MiniMax first
+  // Try MiniMax first (for image analysis)
   if (miniMaxKey && miniMaxKey !== "your-minimax-api-key-here") {
     tags = await analyzeWithMiniMax(imageUrl, miniMaxKey);
   }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/text/chatcompletion_v2";
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
 interface WardrobeItem {
   id: string;
@@ -67,9 +68,8 @@ async function textSearchWardrobe(
 }
 
 async function callMiniMaxLLM(query: string, items: any[], miniMaxKey: string) {
-  if (!miniMaxKey) {
-    throw new Error("MINIMAX_API_KEY is not configured");
-  }
+  // Try MiniMax first, fall back to Claude
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   const itemList = items
     .map(
@@ -78,54 +78,92 @@ async function callMiniMaxLLM(query: string, items: any[], miniMaxKey: string) {
     )
     .join("\n");
 
-  const res = await fetch(MINIMAX_API_URL, {
+  const systemPrompt = `You are Prompt Closet's AI stylist. You create stylish outfit combinations from a user's wardrobe items. Always suggest complete, well-rounded outfits. For each outfit, choose items that work together in terms of color, formality, and occasion appropriateness. For Indian occasions (Diwali, wedding, festive), consider traditional elegance with appropriate coverage. For office/work, prefer structured, professional pieces. For casual/date, relaxed but intentional styling. Return ONLY a valid JSON array — no markdown, no explanation, no preamble. Schema per outfit: { "outfit_name": string, "item_ids": string[], "occasion_fit": string, "styling_tip": string (2 sentences max), "confidence": number (0.0-1.0), "weather_context": string (e.g. "32°C, Humid — Singapore") }`;
+
+  const userPrompt = `User request: ${query}\n\nAvailable wardrobe items:\n${itemList}\n\nReturn a JSON array with 2-3 outfits. Each outfit must use item IDs that appear in the list above.`;
+
+  // Try MiniMax if configured
+  if (miniMaxKey && miniMaxKey !== "your-minimax-api-key-here") {
+    try {
+      const res = await fetch(MINIMAX_API_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${miniMaxKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "MiniMax-Text-01",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content || "[]";
+        const match = content.match(/\[[\s\S]*?\]/);
+        if (match) {
+          const outfits = JSON.parse(match[0]);
+          return outfits.map((outfit: any, idx: number) => ({
+            ...outfit,
+            id: `outfit-${Date.now()}-${idx}`,
+            outfit_name: outfit.outfit_name || "Styled Outfit",
+            item_ids: Array.isArray(outfit.item_ids) ? outfit.item_ids : [],
+            occasion_fit: outfit.occasion_fit || "General",
+            styling_tip:
+              outfit.styling_tip || "A great choice for the occasion.",
+            confidence:
+              typeof outfit.confidence === "number" ? outfit.confidence : 0.8,
+            weather_context: outfit.weather_context || null,
+          }));
+        }
+      }
+    } catch (err) {
+      console.log("MiniMax failed, falling back to Claude:", err);
+    }
+  }
+
+  // Fall back to Claude
+  if (!anthropicKey) {
+    throw new Error(
+      "No AI API key configured. Please add ANTHROPIC_API_KEY to enable AI styling.",
+    );
+  }
+
+  const res = await fetch(ANTHROPIC_API_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${miniMaxKey}`,
-      "Content-Type": "application/json",
+      "x-api-key": anthropicKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "MiniMax-Text-01",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are Prompt Closet's AI stylist. You create stylish outfit combinations from a user's wardrobe items. " +
-            "Always suggest complete, well-rounded outfits. For each outfit, choose items that work together in terms of color, formality, and occasion appropriateness. " +
-            "For Indian occasions (Diwali, wedding, festive), consider traditional elegance with appropriate coverage. " +
-            "For office/work, prefer structured, professional pieces. For casual/date, relaxed but intentional styling. " +
-            "Return ONLY a valid JSON array — no markdown, no explanation, no preamble. " +
-            `Schema per outfit: { "outfit_name": string, "item_ids": string[], "occasion_fit": string, "styling_tip": string (2 sentences max), "confidence": number (0.0-1.0), "weather_context": string (e.g. "32°C, Humid — Singapore") }`,
-        },
-        {
-          role: "user",
-          content: `User request: ${query}\n\nAvailable wardrobe items:\n${itemList}\n\nReturn a JSON array with 2-3 outfits. Each outfit must use item IDs that appear in the list above.`,
-        },
-      ],
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
     }),
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`MiniMax API error ${res.status}: ${errText}`);
+    throw new Error(`Claude API error ${res.status}: ${errText}`);
   }
 
   const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || "[]";
+  const content = data.content?.[0]?.text || "[]";
 
-  // Extract JSON array from response (handles markdown-wrapped responses)
   const match = content.match(/\[[\s\S]*?\]/);
   if (!match) {
-    throw new Error("Failed to parse LLM response as JSON");
+    throw new Error("Failed to parse AI response as JSON");
   }
 
   const outfits = JSON.parse(match[0]);
-
-  // Assign stable IDs to each outfit
   return outfits.map((outfit: any, idx: number) => ({
     ...outfit,
     id: `outfit-${Date.now()}-${idx}`,
-    // Ensure required fields exist
     outfit_name: outfit.outfit_name || "Styled Outfit",
     item_ids: Array.isArray(outfit.item_ids) ? outfit.item_ids : [],
     occasion_fit: outfit.occasion_fit || "General",
@@ -151,13 +189,14 @@ export async function POST(request: Request) {
 
   const supabase = await createClient();
   const miniMaxKey = process.env.MINIMAX_API_KEY || "";
+  const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
   const hfToken = process.env.EXPO_PUBLIC_HF_API_TOKEN || "";
 
-  // Check MiniMax configuration
-  if (!miniMaxKey) {
+  // Check if at least one AI provider is configured
+  if (!miniMaxKey && !anthropicKey) {
     return NextResponse.json({
       error:
-        "AI styling will be available soon — add your MiniMax API key to enable.",
+        "AI styling will be available soon — add a MiniMax or Anthropic API key to enable.",
     });
   }
 
