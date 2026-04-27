@@ -84,18 +84,15 @@ function ShimmerLoader() {
 
 function OutfitCard({
   outfit,
-  items,
   onAccept,
   onReject,
 }: {
-  outfit: OutfitSuggestion;
-  items: OutfitItem[];
+  outfit: OutfitSuggestion & { items?: OutfitItem[] };
   onAccept: (outfit: OutfitSuggestion) => void;
   onReject: (outfit: OutfitSuggestion) => void;
 }) {
-  const outfitItems = outfit.item_ids
-    .map((id) => items.find((i) => i.id === id))
-    .filter(Boolean) as OutfitItem[];
+  // Use embedded items from API, fallback to item_ids mapping
+  const outfitItems = outfit.items || [];
 
   return (
     <div
@@ -564,7 +561,6 @@ export default function StyleClient({
             <OutfitCard
               key={outfit.id}
               outfit={outfit}
-              items={initialItems}
               onAccept={handleAccept}
               onReject={handleReject}
             />

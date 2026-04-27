@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/text/chatcompletion_v2";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
 interface WardrobeItem {
@@ -12,164 +11,388 @@ interface WardrobeItem {
   occasions: string[] | null;
   suggested_name: string | null;
   formality_score: number | null;
+  season: string[] | null;
+  style_notes?: string | null;
+}
+
+// Occasion keyword mapping
+const OCCASION_KEYWORDS: Record<string, string[]> = {
+  casual: ["casual", "relaxed", "everyday", "home", "lounge"],
+  office: ["office", "work", "professional", "formal office", "corporate"],
+  festive: [
+    "festive",
+    "celebration",
+    "party",
+    "diwali",
+    "holi",
+    "christmas",
+    "eid",
+  ],
+  wedding: ["wedding", "marriage", "reception", "ceremony", "bride", "groom"],
+  party: ["party", "nightout", "club", "evening", "celebration"],
+  temple: ["temple", "religious", "puja", "spiritual"],
+  beach: ["beach", "vacation", "swim", "summer"],
+  date: ["date", "romantic", "dinner", "valentine"],
+  sport: ["sport", "gym", "workout", "fitness", "yoga"],
+};
+
+// Season keyword mapping
+const SEASON_KEYWORDS: Record<string, string[]> = {
+  summer: ["summer", "hot", "humid", "sweat", "light"],
+  winter: ["winter", "cold", "warm", "sweater", "jacket"],
+  monsoon: ["monsoon", "rain", "wet", "umbrella"],
+};
+
+// Formality keywords
+const FORMALITY_HIGH = [
+  "formal",
+  "office",
+  "professional",
+  "diplomatic",
+  "interview",
+];
+const FORMALITY_MID = ["smart", "semiformal", "date", "party"];
+const FORMALITY_LOW = ["casual", "relaxed", "lounge", "beach"];
+
+// Color keyword mapping
+const COLOR_KEYWORDS: Record<string, string[]> = {
+  red: ["red", "maroon", "crimson", "scarlet"],
+  blue: ["blue", "navy", "indigo", "denim"],
+  green: ["green", "olive", "emerald", "sage"],
+  yellow: ["yellow", "gold", "mustard", "ochre"],
+  pink: ["pink", "rose", "magenta", "fuscia"],
+  purple: ["purple", "violet", "lavender", "plum"],
+  orange: ["orange", "peach", "coral", "apricot"],
+  white: ["white", "cream", "ivory", "off-white"],
+  black: ["black", "charcoal", "dark"],
+  brown: ["brown", "tan", "beige", "caramel", "chocolate"],
+};
+
+interface ParsedQuery {
+  occasions: string[];
+  colors: string[];
+  seasons: string[];
+  formality: "high" | "mid" | "low" | null;
+  searchTerms: string[];
 }
 
 /**
- * Fallback text-based search when CLIP embedding is not configured.
- * Matches items by keyword overlap with the query.
+ * Parse user query to extract structured filters
  */
-async function textSearchWardrobe(
-  query: string,
+function parseQuery(query: string): ParsedQuery {
+  const q = query.toLowerCase();
+  const words = q.split(/\s+/);
+
+  const occasions: string[] = [];
+  const colors: string[] = [];
+  const seasons: string[] = [];
+  let formality: "high" | "mid" | "low" | null = null;
+  const searchTerms: string[] = [];
+
+  // Match occasion keywords
+  for (const [occasion, keywords] of Object.entries(OCCASION_KEYWORDS)) {
+    if (keywords.some((kw) => q.includes(kw))) {
+      occasions.push(occasion);
+    }
+  }
+
+  // Match season keywords
+  for (const [season, keywords] of Object.entries(SEASON_KEYWORDS)) {
+    if (keywords.some((kw) => q.includes(kw))) {
+      seasons.push(season);
+    }
+  }
+
+  // Match color keywords
+  for (const [color, keywords] of Object.entries(COLOR_KEYWORDS)) {
+    if (keywords.some((kw) => q.includes(kw))) {
+      colors.push(color);
+    }
+  }
+
+  // Match formality level
+  if (FORMALITY_HIGH.some((kw) => q.includes(kw))) {
+    formality = "high";
+  } else if (FORMALITY_MID.some((kw) => q.includes(kw))) {
+    formality = "mid";
+  } else if (FORMALITY_LOW.some((kw) => q.includes(kw))) {
+    formality = "low";
+  }
+
+  // Add remaining significant words as search terms
+  const skipWords = [
+    ...Object.values(OCCASION_KEYWORDS).flat(),
+    ...Object.values(SEASON_KEYWORDS).flat(),
+    ...Object.values(COLOR_KEYWORDS).flat(),
+    ...FORMALITY_HIGH,
+    ...FORMALITY_MID,
+    ...FORMALITY_LOW,
+  ];
+  for (const word of words) {
+    if (
+      word.length > 2 &&
+      !skipWords.includes(word) &&
+      ![
+        "outfit",
+        "wear",
+        "dress",
+        "clothes",
+        "matching",
+        "suggest",
+        "show",
+        "find",
+        "get",
+        "me",
+        "for",
+        "the",
+        "a",
+        "an",
+        "with",
+        "and",
+        "combo",
+      ].includes(word)
+    ) {
+      searchTerms.push(word);
+    }
+  }
+
+  return { occasions, colors, seasons, formality, searchTerms };
+}
+
+/**
+ * Score item relevance to query
+ */
+function scoreItem(item: WardrobeItem, parsed: ParsedQuery): number {
+  let score = 0;
+
+  // Occasion match (highest weight)
+  if (parsed.occasions.length > 0 && item.occasions) {
+    const occasionMatch = item.occasions.some((o) =>
+      parsed.occasions.includes(o.toLowerCase()),
+    );
+    if (occasionMatch) score += 10;
+  }
+
+  // Season match
+  if (parsed.seasons.length > 0 && item.season) {
+    const seasonMatch = item.season.some((s) =>
+      parsed.seasons.includes(s.toLowerCase()),
+    );
+    if (seasonMatch) score += 5;
+  }
+
+  // Color match
+  if (parsed.colors.length > 0 && item.colors) {
+    const colorMatch = item.colors.some((c) =>
+      parsed.colors.includes(c.toLowerCase()),
+    );
+    if (colorMatch) score += 8;
+  }
+
+  // Formality match
+  if (parsed.formality && item.formality_score) {
+    const itemFormality = item.formality_score;
+    if (parsed.formality === "high" && itemFormality >= 4) score += 6;
+    else if (
+      parsed.formality === "mid" &&
+      itemFormality >= 2 &&
+      itemFormality <= 4
+    )
+      score += 6;
+    else if (parsed.formality === "low" && itemFormality <= 3) score += 6;
+  }
+
+  // Search term match
+  for (const term of parsed.searchTerms) {
+    const itemText =
+      `${item.category} ${item.suggested_name || ""} ${(item.occasions || []).join(" ")} ${(item.colors || []).join(" ")}`.toLowerCase();
+    if (itemText.includes(term)) score += 2;
+  }
+
+  return score;
+}
+
+/**
+ * Build outfit combinations from items
+ * Returns top + bottom + optional accessory combinations
+ */
+function buildOutfits(items: WardrobeItem[], parsed: ParsedQuery): any[] {
+  const tops = items.filter((i) =>
+    ["top", "dress", "outerwear", "traditional"].includes(
+      i.category.toLowerCase(),
+    ),
+  );
+  const bottoms = items.filter((i) =>
+    ["bottom"].includes(i.category.toLowerCase()),
+  );
+  const accessories = items.filter((i) =>
+    ["accessory", "footwear"].includes(i.category.toLowerCase()),
+  );
+
+  const outfits: any[] = [];
+
+  // Build outfits with top + bottom
+  for (const top of tops.slice(0, 5)) {
+    for (const bottom of bottoms.slice(0, 5)) {
+      // Check color compatibility (simple complementary check)
+      const outfit = {
+        item_ids: [top.id, bottom.id],
+        occasion_fit: parsed.occasions[0] || top.occasions?.[0] || "casual",
+        outfit_name: `${top.suggested_name || top.category} + ${bottom.suggested_name || bottom.category}`,
+      };
+      outfits.push(outfit);
+    }
+  }
+
+  // Add dress-only outfits
+  const dresses = items.filter((i) => i.category.toLowerCase() === "dress");
+  for (const dress of dresses.slice(0, 5)) {
+    outfits.push({
+      item_ids: [dress.id],
+      occasion_fit: parsed.occasions[0] || dress.occasions?.[0] || "casual",
+      outfit_name: dress.suggested_name || dress.category,
+    });
+  }
+
+  // Add accessory combos
+  for (const acc of accessories.slice(0, 3)) {
+    if (outfits.length > 0) {
+      outfits[0].item_ids.push(acc.id);
+      outfits[0].outfit_name += ` + ${acc.suggested_name || acc.category}`;
+    }
+  }
+
+  // Return top 6 outfits
+  return outfits.slice(0, 6);
+}
+
+/**
+ * Generate styling tip based on outfit and query
+ */
+function generateStylingTip(
+  outfit: any,
+  items: WardrobeItem[],
+  parsed: ParsedQuery,
+): string {
+  const outfitItems = items.filter((i) => outfit.item_ids.includes(i.id));
+  const mainItem = outfitItems[0];
+  const occasion = parsed.occasions[0] || outfit.occasion_fit || "casual";
+
+  if (outfitItems.length === 1) {
+    return `This ${mainItem?.category || "piece"} is perfect for ${occasion}. ${mainItem?.style_notes || "Style it with matching accessories."}`;
+  }
+
+  const itemNames = outfitItems
+    .map((i) => i.suggested_name || i.category)
+    .join(" and ");
+  const occasionTip =
+    occasion === "festive"
+      ? "Add traditional jewelry to elevate this look"
+      : occasion === "office"
+        ? "Pair with formal footwear for a polished look"
+        : occasion === "casual"
+          ? "Add sneakers or flats for a relaxed vibe"
+          : "Complete with matching accessories";
+
+  return `This ${itemNames} combination works great for ${occasion}. ${occasionTip}.`;
+}
+
+/**
+ * Fetch all wardrobe items for user
+ */
+async function getWardrobeItems(
   userId: string,
   supabase: any,
-) {
-  // Extract keywords from query (simple tokenization)
-  const keywords = query
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((w: string) => w.length > 2);
-
-  // Fetch all active wardrobe items for the user
-  const { data: items } = await supabase
+): Promise<WardrobeItem[]> {
+  const { data } = await supabase
     .from("wardrobe_items")
     .select(
-      "id, image_url, category, colors, occasions, suggested_name, formality_score",
+      "id, image_url, category, colors, occasions, suggested_name, formality_score, season",
     )
     .eq("user_id", userId)
     .eq("is_active", true);
-
-  if (!items || items.length === 0) return [];
-
-  // Score each item by keyword overlap
-  const scored = items.map((item: WardrobeItem) => {
-    const fields = [
-      item.category,
-      item.suggested_name || "",
-      ...(item.occasions || []),
-      ...(item.colors || []),
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const score = keywords.reduce((acc: number, kw: string) => {
-      return acc + (fields.includes(kw) ? 1 : 0);
-    }, 0);
-
-    return { item, score };
-  });
-
-  // Return top 20 matched items sorted by score
-  return scored
-    .filter((s: { score: number }) => s.score > 0)
-    .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
-    .slice(0, 20)
-    .map((s: { item: WardrobeItem }) => ({ item_id: s.item.id }));
+  return data || [];
 }
 
-async function callMiniMaxLLM(query: string, items: any[], miniMaxKey: string) {
-  // Try MiniMax first, fall back to Claude
+/**
+ * Try to enhance outfit explanations with LLM
+ */
+async function enhanceWithLLM(
+  outfits: any[],
+  items: WardrobeItem[],
+  query: string,
+): Promise<any[]> {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const miniMaxKey = process.env.MINIMAX_API_KEY;
 
-  const itemList = items
-    .map(
-      (i: any) =>
-        `- ID: ${i.id} | ${i.suggested_name || i.category} | Category: ${i.category} | Occasions: ${(i.occasions || []).join(", ") || "any"} | Formality: ${i.formality_score || 3}/5 | Colors: ${(i.colors || []).join(", ")}`,
-    )
-    .join("\n");
+  // Check if we have a working LLM
+  if (!anthropicKey && !miniMaxKey) {
+    return outfits.map((o) => ({
+      ...o,
+      styling_tip: o.styling_tip || "A great outfit combination for you!",
+      confidence: 0.7,
+      weather_context: null,
+      enhanced: false,
+    }));
+  }
 
-  const systemPrompt = `You are Prompt Closet's AI stylist. You create stylish outfit combinations from a user's wardrobe items. Always suggest complete, well-rounded outfits. For each outfit, choose items that work together in terms of color, formality, and occasion appropriateness. For Indian occasions (Diwali, wedding, festive), consider traditional elegance with appropriate coverage. For office/work, prefer structured, professional pieces. For casual/date, relaxed but intentional styling. Return ONLY a valid JSON array — no markdown, no explanation, no preamble. Schema per outfit: { "outfit_name": string, "item_ids": string[], "occasion_fit": string, "styling_tip": string (2 sentences max), "confidence": number (0.0-1.0), "weather_context": string (e.g. "32°C, Humid — Singapore") }`;
-
-  const userPrompt = `User request: ${query}\n\nAvailable wardrobe items:\n${itemList}\n\nReturn a JSON array with 2-3 outfits. Each outfit must use item IDs that appear in the list above.`;
-
-  // Try MiniMax if configured
-  if (miniMaxKey && miniMaxKey !== "your-minimax-api-key-here") {
+  // Try Claude if available
+  if (anthropicKey) {
     try {
-      const res = await fetch(MINIMAX_API_URL, {
+      const itemList = items
+        .map(
+          (i) => `${i.id}: ${i.suggested_name || i.category} (${i.category})`,
+        )
+        .join(", ");
+      const res = await fetch(ANTHROPIC_API_URL, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${miniMaxKey}`,
-          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
         },
         body: JSON.stringify({
-          model: "MiniMax-Text-01",
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 500,
+          system: `You are Prompt Closet's AI stylist. Return ONLY a JSON array of tips, one per outfit. Schema: { "styling_tip": string (1-2 sentences), "confidence": number (0.5-1.0) }`,
           messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
+            {
+              role: "user",
+              content: `Query: ${query}\n\nOutfit indices (0-${outfits.length - 1}):\n${outfits.map((o, i) => `${i}: ${o.outfit_name}`).join("\n")}\n\nReturn JSON array of ${outfits.length} tips.`,
+            },
           ],
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        const content = data.choices?.[0]?.message?.content || "[]";
-        const match = content.match(/\[[\s\S]*?\]/);
-        if (match) {
-          const outfits = JSON.parse(match[0]);
-          return outfits.map((outfit: any, idx: number) => ({
-            ...outfit,
-            id: `outfit-${Date.now()}-${idx}`,
-            outfit_name: outfit.outfit_name || "Styled Outfit",
-            item_ids: Array.isArray(outfit.item_ids) ? outfit.item_ids : [],
-            occasion_fit: outfit.occasion_fit || "General",
-            styling_tip:
-              outfit.styling_tip || "A great choice for the occasion.",
-            confidence:
-              typeof outfit.confidence === "number" ? outfit.confidence : 0.8,
-            weather_context: outfit.weather_context || null,
-          }));
+        const content = data.content?.[0]?.text;
+        if (content) {
+          const match = content.match(/\[[\s\S]*?\]/);
+          if (match) {
+            const tips = JSON.parse(match[0]);
+            return outfits.map((o, i) => ({
+              ...o,
+              styling_tip: tips[i]?.styling_tip || o.styling_tip,
+              confidence: tips[i]?.confidence || 0.8,
+              weather_context: null,
+              enhanced: true,
+            }));
+          }
         }
       }
     } catch (err) {
-      console.log("MiniMax failed, falling back to Claude:", err);
+      console.log("Claude enhancement failed:", err);
     }
   }
 
-  // Fall back to Claude
-  if (!anthropicKey) {
-    throw new Error(
-      "No AI API key configured. Please add ANTHROPIC_API_KEY to enable AI styling.",
-    );
-  }
-
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "x-api-key": anthropicKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Claude API error ${res.status}: ${errText}`);
-  }
-
-  const data = await res.json();
-  const content = data.content?.[0]?.text || "[]";
-
-  const match = content.match(/\[[\s\S]*?\]/);
-  if (!match) {
-    throw new Error("Failed to parse AI response as JSON");
-  }
-
-  const outfits = JSON.parse(match[0]);
-  return outfits.map((outfit: any, idx: number) => ({
-    ...outfit,
-    id: `outfit-${Date.now()}-${idx}`,
-    outfit_name: outfit.outfit_name || "Styled Outfit",
-    item_ids: Array.isArray(outfit.item_ids) ? outfit.item_ids : [],
-    occasion_fit: outfit.occasion_fit || "General",
-    styling_tip: outfit.styling_tip || "A great choice for the occasion.",
-    confidence: typeof outfit.confidence === "number" ? outfit.confidence : 0.8,
-    weather_context: outfit.weather_context || null,
+  // Return with basic tips if LLM failed
+  return outfits.map((o) => ({
+    ...o,
+    styling_tip: o.styling_tip || "A great outfit combination for you!",
+    confidence: 0.7,
+    weather_context: null,
+    enhanced: false,
   }));
 }
 
@@ -187,103 +410,113 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const miniMaxKey = process.env.MINIMAX_API_KEY || "";
-  const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
-  const hfToken = process.env.EXPO_PUBLIC_HF_API_TOKEN || "";
-
-  // Check if at least one AI provider is configured
-  if (!miniMaxKey && !anthropicKey) {
-    return NextResponse.json({
-      error:
-        "AI styling will be available soon — add a MiniMax or Anthropic API key to enable.",
-    });
-  }
-
   try {
-    let matched: any[] = [];
+    const supabase = await createClient();
 
-    // Try CLIP embedding if HF token is available
-    if (hfToken) {
-      try {
-        const hfRes = await fetch(
-          "https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${hfToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ inputs: query }),
-          },
-        );
+    // Fetch all wardrobe items
+    const items = await getWardrobeItems(userId, supabase);
 
-        if (hfRes.ok) {
-          const hfData = await hfRes.json();
-          const embedding = hfData[0];
+    if (items.length === 0) {
+      return NextResponse.json({
+        error:
+          "Your wardrobe is empty. Add some items first to get outfit suggestions!",
+      });
+    }
 
-          if (embedding && embedding.length > 0) {
-            const rpcRes = await supabase.rpc("match_wardrobe_items", {
-              query_embedding: embedding,
-              p_user_id: userId,
-              match_threshold: 0.3,
-              match_count: 20,
-            });
-            matched = rpcRes.data || [];
-          }
+    // Parse the query
+    const parsed = parseQuery(query);
+
+    // Score and filter items
+    const scoredItems = items.map((item) => ({
+      item,
+      score: scoreItem(item, parsed),
+    }));
+
+    // Sort by score and take top matches
+    const matchedItems = scoredItems
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 30)
+      .map((s) => s.item);
+
+    // If no keyword matches, use all items (broad search)
+    const itemsToUse =
+      matchedItems.length > 0 ? matchedItems : items.slice(0, 20);
+
+    // Build outfit combinations
+    let outfits = buildOutfits(itemsToUse, parsed);
+
+    // If still no outfits, try pairing any top with any bottom
+    if (outfits.length === 0) {
+      const anyTops = items
+        .filter((i) =>
+          ["top", "dress", "traditional", "outerwear"].includes(
+            i.category.toLowerCase(),
+          ),
+        )
+        .slice(0, 3);
+      const anyBottoms = items
+        .filter((i) => i.category.toLowerCase() === "bottom")
+        .slice(0, 3);
+
+      for (const top of anyTops) {
+        for (const bottom of anyBottoms) {
+          outfits.push({
+            item_ids: [top.id, bottom.id],
+            occasion_fit: parsed.occasions[0] || "casual",
+            outfit_name: `${top.suggested_name || top.category} + ${bottom.suggested_name || bottom.category}`,
+          });
         }
-      } catch {
-        // HF failed — fall through to text search
       }
     }
 
-    // Text-based fallback if no HF embedding or RPC failed
-    if (matched.length === 0) {
-      matched = await textSearchWardrobe(query, userId, supabase);
+    // If STILL no outfits, just return single items as "looks"
+    if (outfits.length === 0) {
+      for (const item of items.slice(0, 6)) {
+        outfits.push({
+          item_ids: [item.id],
+          occasion_fit: item.occasions?.[0] || "casual",
+          outfit_name: item.suggested_name || item.category,
+        });
+      }
     }
 
-    // No matching items found
-    if (matched.length === 0) {
-      return NextResponse.json({
-        error: "I couldn't find anything matching your request.",
-      });
-    }
+    // Generate styling tips
+    const outfitsWithTips = outfits.map((o) => ({
+      ...o,
+      styling_tip: generateStylingTip(o, items, parsed),
+      confidence: 0.75,
+      weather_context: null,
+    }));
 
-    // Get full item details for matched items
-    const itemIds = matched.map((m: any) => m.item_id);
-    const { data: items } = await supabase
-      .from("wardrobe_items")
-      .select(
-        "id, image_url, category, colors, occasions, suggested_name, formality_score",
-      )
-      .in("id", itemIds)
-      .eq("is_active", true);
+    // Try to enhance with LLM (best effort)
+    const enhancedOutfits = await enhanceWithLLM(outfitsWithTips, items, query);
 
-    if (!items || items.length === 0) {
-      return NextResponse.json({
-        error: "I couldn't find anything matching your request.",
-      });
-    }
+    // Attach full item data for photos
+    const outfitsWithPhotos = enhancedOutfits.map((outfit) => ({
+      ...outfit,
+      items: items
+        .filter((i) => outfit.item_ids.includes(i.id))
+        .map((i) => ({
+          id: i.id,
+          image_url: i.image_url,
+          suggested_name: i.suggested_name,
+          category: i.category,
+        })),
+    }));
 
-    const outfits = await callMiniMaxLLM(query, items, miniMaxKey);
-    return NextResponse.json({ outfits });
-  } catch (err: any) {
+    return NextResponse.json({
+      outfits: outfitsWithPhotos,
+      usingKeywordSearch: true,
+      parsed: {
+        occasions: parsed.occasions,
+        colors: parsed.colors,
+        seasons: parsed.seasons,
+        formality: parsed.formality,
+      },
+    });
+  } catch (err) {
     console.error("Magic bar error:", err);
-
-    // Distinguish error types for friendly UX
-    if (err.message.includes("MiniMax API error 401")) {
-      return NextResponse.json({
-        error:
-          "AI styling will be available soon — add your MiniMax API key to enable.",
-      });
-    }
-
-    if (err.message.includes("MiniMax API error")) {
-      return NextResponse.json({
-        error: "AI service is temporarily unavailable. Please try again.",
-      });
-    }
-
     return NextResponse.json({
       error: "Something went wrong. Try again.",
     });
