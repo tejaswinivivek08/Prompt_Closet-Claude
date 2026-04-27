@@ -67,6 +67,8 @@ export default function ItemDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [imageLoading, setImageLoading] = useState<Record<number, boolean>>({});
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Normalize item to always have image_urls array
@@ -303,11 +305,55 @@ export default function ItemDetailModal({
               style={{ backgroundColor: "#F5F0EA" }}
             >
               {form.image_urls.length > 0 ? (
-                <img
-                  src={form.image_urls[currentPhotoIndex]}
-                  alt={`Photo ${currentPhotoIndex + 1}`}
-                  className="object-cover w-full h-full"
-                />
+                <>
+                  {imageLoading[currentPhotoIndex] !== false &&
+                    !imageErrors[currentPhotoIndex] && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div
+                          className="w-8 h-8 border-3 border-t-transparent rounded-full animate-spin"
+                          style={{
+                            borderColor: "#C9847A",
+                            borderTopColor: "transparent",
+                          }}
+                        />
+                      </div>
+                    )}
+                  <img
+                    src={form.image_urls[currentPhotoIndex]}
+                    alt={`Photo ${currentPhotoIndex + 1}`}
+                    className="object-cover w-full h-full"
+                    onLoad={() =>
+                      setImageLoading((prev) => ({
+                        ...prev,
+                        [currentPhotoIndex]: false,
+                      }))
+                    }
+                    onError={() => {
+                      setImageErrors((prev) => ({
+                        ...prev,
+                        [currentPhotoIndex]: true,
+                      }));
+                      setImageLoading((prev) => ({
+                        ...prev,
+                        [currentPhotoIndex]: false,
+                      }));
+                    }}
+                    style={
+                      imageLoading[currentPhotoIndex] === false &&
+                      !imageErrors[currentPhotoIndex]
+                        ? {}
+                        : { display: "none" }
+                    }
+                  />
+                  {imageErrors[currentPhotoIndex] && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{ backgroundColor: "#F5F0EA" }}
+                    >
+                      <ImageIcon size={48} style={{ color: "#C9847A" }} />
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex items-center justify-center w-full h-full">
                   <ImageIcon size={48} style={{ color: "#C9847A" }} />
@@ -370,11 +416,26 @@ export default function ItemDetailModal({
                       opacity: idx === currentPhotoIndex ? 1 : 0.7,
                     }}
                   >
-                    <img
-                      src={url}
-                      alt={`Thumbnail ${idx + 1}`}
-                      className="object-cover w-full h-full"
-                    />
+                    {imageErrors[idx] ? (
+                      <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ backgroundColor: "#E5DDD5" }}
+                      >
+                        <ImageIcon size={16} style={{ color: "#C9847A" }} />
+                      </div>
+                    ) : (
+                      <img
+                        src={url}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="object-cover w-full h-full"
+                        onLoad={() =>
+                          setImageLoading((prev) => ({ ...prev, [idx]: false }))
+                        }
+                        onError={() =>
+                          setImageErrors((prev) => ({ ...prev, [idx]: true }))
+                        }
+                      />
+                    )}
                     {idx === 0 && (
                       <div
                         className="absolute bottom-0 left-0 right-0 text-center text-xs py-0.5"

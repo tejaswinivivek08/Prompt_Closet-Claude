@@ -17,18 +17,18 @@ export default async function TwinPage() {
     .eq("user_id", session.user.id)
     .eq("is_active", true);
 
-  const { data: avatars } = await supabase
-    .from("user_avatars")
-    .select("*")
-    .eq("user_id", session.user.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(1);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select(
+      "avatar_url, avatar_glb_url, avatar_params, bust_cm, waist_cm, hip_cm, body_type, hair_style, hair_color, clothing_size",
+    )
+    .eq("id", session.user.id)
+    .single();
 
   return (
     <TwinClient
       initialItems={items || []}
-      initialAvatar={avatars?.[0] || null}
+      initialProfile={profiles || null}
       userId={session.user.id}
     />
   );

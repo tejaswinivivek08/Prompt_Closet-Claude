@@ -7,9 +7,12 @@ export async function POST(request: Request) {
   const { avatarUrl, outfitItemIds } = await request.json();
   const miniMaxKey = process.env.MINIMAX_API_KEY;
 
-  if (!miniMaxKey) {
+  if (!miniMaxKey || miniMaxKey === "your-minimax-api-key-here") {
     return NextResponse.json(
-      { error: "MINIMAX_NOT_CONFIGURED" },
+      {
+        error: "MINIMAX_NOT_CONFIGURED",
+        message: "MiniMax API key not configured",
+      },
       { status: 500 },
     );
   }
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: outfitItems } = await supabase
     .from("wardrobe_items")
-    .select("category, suggested_name")
+    .select("category, suggested_name, image_url")
     .in("id", outfitItemIds)
     .eq("is_active", true);
 
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
     .join(", ");
 
   const prompt = itemDescriptions
-    ? `Fashion model wearing ${itemDescriptions}, full body, neutral studio background, high quality fashion photography, editorial style`
+    ? `Fashion model wearing ${itemDescriptions}, full body, neutral studio background, high quality fashion photography, editorial style, detailed fabric texture`
     : `Fashion model wearing stylish outfit, full body, neutral background, high quality fashion photography`;
 
   try {
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
       const errText = await res.text();
       console.error("MiniMax try-on API error:", res.status, errText);
       return NextResponse.json(
-        { error: "Failed to generate try-on" },
+        { error: "Failed to generate try-on", details: errText },
         { status: 500 },
       );
     }
@@ -64,7 +67,25 @@ export async function POST(request: Request) {
     const data = await res.json();
     const resultUrl = data.data?.[0]?.url;
 
-    return NextResponse.json({ resultUrl: resultUrl || null });
+    if (!resultUrl) {
+      return NextResponse.json(
+        { error: "Failed to generate try-on - no URL returned" },
+        { status: 500 },
+      );
+    }
+
+    // Save try-on result
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    if (userId) {
+      await supabase.from("try_on_results").insert({
+        user_id: userId,
+        avatar_url: avatarUrl,
+        outfit_item_ids: outfitItemIds,
+        result_image_url: resultUrl,
+      });
+    }
+
+    return NextResponse.json({ resultUrl });
   } catch (err) {
     console.error("Try-on error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
