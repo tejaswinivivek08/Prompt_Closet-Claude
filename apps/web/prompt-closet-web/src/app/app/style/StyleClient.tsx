@@ -1,13 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Sparkles,
-  ThumbsUp,
-  ThumbsDown,
-  Clock,
-  Thermometer,
-} from "lucide-react";
+import { Sparkles, ThumbsUp, ThumbsDown, Thermometer } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const QUICK_PROMPTS = [
@@ -580,7 +574,11 @@ export default function StyleClient({
           className="flex items-center gap-2 mb-4 text-sm font-semibold transition-all hover:opacity-80"
           style={{ color: "#2B2B2B" }}
         >
-          <Clock size={16} style={{ color: "#C9847A" }} />
+          <img
+            src="/icons/History Icon.png"
+            alt="History"
+            className="w-4 h-4 object-contain"
+          />
           Previously Saved Outfits
           <span
             className="ml-1 text-xs font-medium px-2 py-0.5 rounded-full"

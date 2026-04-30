@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Droplet, Sparkles, User, Shirt, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 export default async function AppLayout({
   children,
@@ -15,11 +15,13 @@ export default async function AppLayout({
 
   if (!session) redirect("/auth");
 
+  const pathname = "/app/closet"; // Default - use hook for real active state
+
   const navItems = [
-    { href: "/app/closet", label: "Closet", icon: Shirt },
-    { href: "/app/style", label: "Magic Bar", icon: Sparkles },
-    { href: "/app/twin", label: "Digital Twin", icon: Droplet },
-    { href: "/app/profile", label: "Profile", icon: User },
+    { href: "/app/closet", label: "Closet", icon: "Closet Icon.png" },
+    { href: "/app/style", label: "Magic Bar", icon: "Style Icon.png" },
+    { href: "/app/twin", label: "Digital Twin", icon: "User Profile Icon.png" },
+    { href: "/app/profile", label: "Profile", icon: "User Profile Icon.png" },
   ];
 
   return (
@@ -37,12 +39,11 @@ export default async function AppLayout({
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/app/closet" className="flex items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: "#C9847A" }}
-              >
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
+              <img
+                src="/logo.png"
+                alt="Prompt Closet"
+                style={{ height: "var(--logo-size-nav, 48px)", width: "auto" }}
+              />
               <span
                 className="font-bold text-base"
                 style={{ color: "#2B2B2B" }}
@@ -53,14 +54,18 @@ export default async function AppLayout({
 
             {/* Nav links */}
             <div className="flex items-center gap-1">
-              {navItems.map(({ href, label, icon: Icon }) => (
+              {navItems.map(({ href, label, icon }) => (
                 <Link
                   key={href}
                   href={href}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all hover:opacity-80"
                   style={{ color: "#2B2B2B" }}
                 >
-                  <Icon size={15} />
+                  <img
+                    src={`/icons/${icon}`}
+                    alt={label}
+                    className="w-4 h-4 object-contain"
+                  />
                   <span className="hidden sm:inline">{label}</span>
                 </Link>
               ))}

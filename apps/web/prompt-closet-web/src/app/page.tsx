@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Sparkles,
@@ -23,7 +25,11 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Prompt Closet" className="h-10 w-auto" />
+            <img
+              src="/logo.png"
+              alt="Prompt Closet"
+              style={{ height: "var(--logo-size, 48px)", width: "auto" }}
+            />
             <span className="font-bold text-lg" style={{ color: "#2B2B2B" }}>
               Prompt Closet
             </span>
@@ -46,6 +52,19 @@ export default function LandingPage() {
             >
               Try Free
             </Link>
+            <a
+              href="#features"
+              className="text-sm font-medium cursor-pointer"
+              style={{ color: "#7A6F68" }}
+              onClick={(e) => {
+                e.preventDefault();
+                document
+                  .getElementById("features")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Features
+            </a>
           </div>
         </div>
       </nav>
@@ -55,7 +74,11 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto">
           {/* Logo large */}
           <div className="flex justify-center mb-8">
-            <img src="/logo.png" alt="Prompt Closet" className="h-20 w-auto" />
+            <img
+              src="/logo.png"
+              alt="Prompt Closet"
+              style={{ height: "var(--logo-size-hero, 80px)", width: "auto" }}
+            />
           </div>
 
           <h1
@@ -114,8 +137,21 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Trusted By */}
+      <section className="px-6 py-10">
+        <div className="max-w-2xl mx-auto text-center">
+          <p className="text-sm font-medium mb-4" style={{ color: "#7A6F68" }}>
+            Trusted by fashion-forward professionals in Singapore
+          </p>
+        </div>
+      </section>
+
       {/* Features */}
-      <section className="px-6 py-16" style={{ backgroundColor: "#FFFFFF" }}>
+      <section
+        id="features"
+        className="px-6 py-16"
+        style={{ backgroundColor: "#FFFFFF" }}
+      >
         <div className="max-w-5xl mx-auto">
           <h2
             className="text-3xl font-bold text-center mb-12"
@@ -133,10 +169,14 @@ export default function LandingPage() {
               }}
             >
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
-                <Shirt size={28} style={{ color: "#C9847A" }} />
+                <img
+                  src="/icons/Closet Icon.png"
+                  alt="Closet"
+                  className="w-8 h-8 object-contain"
+                />
               </div>
               <h3
                 className="font-bold text-lg mb-2"
@@ -159,10 +199,14 @@ export default function LandingPage() {
               }}
             >
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
-                <Sparkles size={28} style={{ color: "#C9847A" }} />
+                <img
+                  src="/icons/Style Icon.png"
+                  alt="Style"
+                  className="w-8 h-8 object-contain"
+                />
               </div>
               <h3
                 className="font-bold text-lg mb-2"
@@ -185,10 +229,14 @@ export default function LandingPage() {
               }}
             >
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
-                <Droplet size={28} style={{ color: "#C9847A" }} />
+                <img
+                  src="/icons/Style Icon.png"
+                  alt="Digital Twin"
+                  className="w-8 h-8 object-contain"
+                />
               </div>
               <h3
                 className="font-bold text-lg mb-2"
@@ -254,7 +302,7 @@ export default function LandingPage() {
                 className="text-3xl font-bold mb-4"
                 style={{ color: "#C9847A" }}
               >
-                $0
+                S$0
                 <span
                   className="text-sm font-normal"
                   style={{ color: "#7A6F68" }}
@@ -315,7 +363,7 @@ export default function LandingPage() {
                 className="text-3xl font-bold mb-4"
                 style={{ color: "#C9847A" }}
               >
-                $9.99
+                S$9.99
                 <span
                   className="text-sm font-normal"
                   style={{ color: "#7A6F68" }}
@@ -370,7 +418,7 @@ export default function LandingPage() {
                 className="text-3xl font-bold mb-4"
                 style={{ color: "#C9847A" }}
               >
-                $49.99
+                S$49.99
                 <span
                   className="text-sm font-normal"
                   style={{ color: "#7A6F68" }}

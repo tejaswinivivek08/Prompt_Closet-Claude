@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Shirt, Upload, Loader2, Wand2 } from "lucide-react";
+import { Shirt, Upload, Loader2, Wand2 } from "lucide-react";
 import ItemCard from "@/components/ItemCard";
 import FilterPill from "@/components/FilterPill";
 import ItemDetailModal from "@/components/ItemDetailModal";
@@ -152,7 +152,11 @@ export default function ClosetClient({
             boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
           }}
         >
-          <Plus size={18} />
+          <img
+            src="/icons/Add Icon.png"
+            alt="Add"
+            className="w-5 h-5 object-contain brightness-0 invert"
+          />
           <span className="text-sm font-semibold">Add Item</span>
           <input
             type="file"

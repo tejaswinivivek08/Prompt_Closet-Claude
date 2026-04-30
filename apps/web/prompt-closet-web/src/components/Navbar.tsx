@@ -6,10 +6,10 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 
 const navLinks = [
-  { href: "/app/closet", label: "Closet" },
-  { href: "/app/style", label: "Style" },
-  { href: "/app/twin", label: "Twin" },
-  { href: "/app/profile", label: "Profile" },
+  { href: "/app/closet", label: "Closet", icon: "Closet Icon.png" },
+  { href: "/app/style", label: "Style", icon: "Style Icon.png" },
+  { href: "/app/twin", label: "Twin", icon: "User Profile Icon.png" },
+  { href: "/app/profile", label: "Profile", icon: "User Profile Icon.png" },
 ];
 
 export default function Navbar() {
@@ -19,15 +19,22 @@ export default function Navbar() {
   return (
     <nav
       className="w-full px-6 py-4 flex items-center justify-between sticky top-0 z-50"
-      style={{
-        backgroundColor: "rgba(245,240,234,0.95)",
-        backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #E5DDD5",
-      }}
+      style={
+        {
+          backgroundColor: "rgba(245,240,234,0.95)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid #E5DDD5",
+          "--logo-size-nav": "48px",
+        } as React.CSSProperties
+      }
     >
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-3">
-        <img src="/logo.png" alt="Prompt Closet" className="h-9 w-auto" />
+      <Link href="/app/closet" className="flex items-center gap-3">
+        <img
+          src="/logo.png"
+          alt="Prompt Closet"
+          style={{ height: "var(--logo-size-nav, 48px)", width: "auto" }}
+        />
         <span className="font-bold text-lg" style={{ color: "#2B2B2B" }}>
           Prompt Closet
         </span>
@@ -41,7 +48,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium transition-colors"
+              className="flex items-center gap-1.5 text-sm font-medium transition-colors"
               style={{
                 color: isActive ? "#C9847A" : "#7A6F68",
                 borderBottom: isActive
@@ -50,6 +57,11 @@ export default function Navbar() {
                 paddingBottom: "2px",
               }}
             >
+              <img
+                src={`/icons/${link.icon}`}
+                alt={link.label}
+                className="w-4 h-4 object-contain"
+              />
               {link.label}
             </Link>
           );
@@ -101,12 +113,17 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-base font-medium py-2"
+                  className="flex items-center gap-2 text-base font-medium py-2"
                   style={{
                     color: isActive ? "#C9847A" : "#7A6F68",
                   }}
                   onClick={() => setMobileMenuOpen(false)}
                 >
+                  <img
+                    src={`/icons/${link.icon}`}
+                    alt={link.label}
+                    className="w-5 h-5 object-contain"
+                  />
                   {link.label}
                 </Link>
               );
