@@ -33,7 +33,7 @@ export default function Navbar() {
         <img
           src="/logo.png"
           alt="Prompt Closet"
-          style={{ height: "var(--logo-size-nav, 48px)", width: "auto" }}
+          style={{ height: "var(--logo-size-nav, 500 px)", width: "auto" }}
         />
         <span className="font-bold text-lg" style={{ color: "#2B2B2B" }}>
           Prompt Closet

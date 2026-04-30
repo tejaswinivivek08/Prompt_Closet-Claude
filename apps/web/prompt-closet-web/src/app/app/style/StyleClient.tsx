@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, ThumbsUp, ThumbsDown, Thermometer } from "lucide-react";
+import {
+  Sparkles,
+  ThumbsUp,
+  ThumbsDown,
+  Clock,
+  Thermometer,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const QUICK_PROMPTS = [
