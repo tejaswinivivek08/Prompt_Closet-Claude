@@ -1,7 +1,6 @@
 {
   "framework": "nextjs",
-  "rootDirectory": "apps/web/prompt-closet-web",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install"
+  "buildCommand": "cd apps/web/prompt-closet-web && npm install && npm run build",
+  "outputDirectory": "apps/web/prompt-closet-web/.next",
+  "installCommand": "cd apps/web/prompt-closet-web && npm install"
 }
