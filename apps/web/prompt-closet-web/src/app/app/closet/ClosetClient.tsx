@@ -269,7 +269,7 @@ export default function ClosetClient({
           <img
             src="/icons/Add Icon.png"
             alt="Add"
-            className="w-5 h-5 object-contain brightness-0 invert"
+            className="w-10 h-10 object-contain brightness-0 invert"
           />
           <span className="text-sm font-semibold">Add Item</span>
         </button>

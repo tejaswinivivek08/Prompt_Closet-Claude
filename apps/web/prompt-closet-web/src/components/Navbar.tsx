@@ -34,7 +34,7 @@ export default function Navbar() {
         <img
           src="/logo.png"
           alt="Prompt Closet"
-          style={{ height: "var(--logo-size-nav, 25px)", width: "auto" }}
+          style={{ height: "60px", width: "auto" }}
         />
         <span className="font-bold text-lg" style={{ color: "#2B2B2B" }}>
           Prompt Closet
@@ -61,7 +61,7 @@ export default function Navbar() {
               <img
                 src={`/icons/${link.icon}`}
                 alt={link.label}
-                className="w-4 h-4 object-contain"
+                className="w-10 h-10 object-contain"
               />
               {link.label}
             </Link>
@@ -123,7 +123,7 @@ export default function Navbar() {
                   <img
                     src={`/icons/${link.icon}`}
                     alt={link.label}
-                    className="w-5 h-5 object-contain"
+                    className="w-10 h-10 object-contain"
                   />
                   {link.label}
                 </Link>

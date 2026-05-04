@@ -175,7 +175,7 @@ export default function LandingPage() {
                 <img
                   src="/icons/Closet Icon.png"
                   alt="Closet"
-                  className="w-8 h-8 object-contain"
+                  className="w-10 h-10 object-contain"
                 />
               </div>
               <h3
@@ -205,7 +205,7 @@ export default function LandingPage() {
                 <img
                   src="/icons/Style Icon.png"
                   alt="Style"
-                  className="w-8 h-8 object-contain"
+                  className="w-10 h-10 object-contain"
                 />
               </div>
               <h3
@@ -235,7 +235,7 @@ export default function LandingPage() {
                 <img
                   src="/icons/Style Icon.png"
                   alt="Digital Twin"
-                  className="w-8 h-8 object-contain"
+                  className="w-10 h-10 object-contain"
                 />
               </div>
               <h3
