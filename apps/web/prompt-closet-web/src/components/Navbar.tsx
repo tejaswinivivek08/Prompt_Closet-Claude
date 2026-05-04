@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/app/style", label: "Style", icon: "Style Icon.png" },
   { href: "/app/twin", label: "Twin", icon: "User Profile Icon.png" },
   { href: "/app/profile", label: "Profile", icon: "User Profile Icon.png" },
+  { href: "/app/settings", label: "Settings", icon: "settings.png" },
 ];
 
 export default function Navbar() {
