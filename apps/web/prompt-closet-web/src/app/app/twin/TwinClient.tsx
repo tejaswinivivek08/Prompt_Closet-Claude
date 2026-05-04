@@ -142,6 +142,22 @@ interface AvatarData {
   avatarParams: AvatarFormData;
 }
 
+// Demo pre-populated values for investor presentation
+const DEMO_FORM_DATA: AvatarFormData = {
+  gender: "female",
+  skinTone: "#C68642",
+  height: 157,
+  weight: 53,
+  clothingSize: "S",
+  waist: 27,
+  bust: null,
+  hips: null,
+  hairLength: "long",
+  hairTexture: "wavy",
+  hairColor: "dark_brown",
+  selfieImage: null,
+};
+
 const INITIAL_FORM_DATA: AvatarFormData = {
   gender: null,
   skinTone: null,
@@ -279,7 +295,20 @@ export default function TwinClient({
 
       if (miniMaxKey && miniMaxKey !== "your-minimax-api-key-here") {
         try {
-          const prompt = `Professional fashion model avatar, full body shot, ${formData.gender} figure, skin tone ${formData.skinTone}, ${formData.hairLength} ${formData.hairTexture} hair in ${formData.hairColor} color, wearing modern fashionable outfit, neutral studio background, fashion editorial style, high quality digital avatar`;
+          const hairColorMap: Record<string, string> = {
+            black: "black",
+            dark_brown: "dark brown",
+            brown: "brown",
+            auburn: "auburn",
+            blonde: "blonde",
+            grey: "grey",
+          };
+          const hairColorLabel =
+            hairColorMap[formData.hairColor || ""] || "dark";
+          const skinToneLabel = formData.skinTone || "#C68642";
+          const heightLabel = `${formData.height}cm`;
+
+          const prompt = `Fashion illustration of an Indian woman, wheatish skin tone hex ${skinToneLabel}, ${heightLabel} tall, slim build, ${formData.hairLength} ${formData.hairTexture} hair in ${hairColorLabel} color, wearing modern fashionable outfit, full body view, white background, high quality fashion photography style, realistic but stylized, respectful dignified fashion illustration, appropriate clothing coverage maintained, professional fashion photography, suitable for all audiences`;
 
           const res = await fetch("/api/avatar", {
             method: "POST",
@@ -873,49 +902,68 @@ export default function TwinClient({
                 className="text-xl font-bold mb-2"
                 style={{ color: "#2B2B2B" }}
               >
-                Would you like to add a selfie?
+                Upload your photo
               </h2>
               <p className="text-sm" style={{ color: "#7A6F68" }}>
-                Step 6: Upload a photo for more accurate face features
-                (optional)
+                Step 6: For personalized styling recommendations (optional)
               </p>
             </div>
 
+            {/* Privacy notice */}
             <div
-              className="border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all"
-              style={{ borderColor: "#E5DDD5", backgroundColor: "#F5F0EA" }}
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = "image/*";
-                input.onchange = (e) => {
-                  const file = (e.target as HTMLInputElement).files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                      setFormData({
-                        ...formData,
-                        selfieImage: e.target?.result as string,
-                      });
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                };
-                input.click();
+              className="rounded-xl p-3 text-xs"
+              style={{
+                backgroundColor: "rgba(201,132,122,0.08)",
+                color: "#7A6F68",
               }}
+            >
+              <p className="font-semibold mb-1" style={{ color: "#C9847A" }}>
+                🔒 Your privacy is protected
+              </p>
+              <p>
+                Your photo is used only to personalize your style
+                recommendations. We never share or sell your images.
+              </p>
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              id="selfie-file-input"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    setFormData({
+                      ...formData,
+                      selfieImage: ev.target?.result as string,
+                    });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+
+            {/* Webcam capture area */}
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{ border: "2px solid #E5DDD5" }}
             >
               {formData.selfieImage ? (
                 <div className="relative">
                   <img
                     src={formData.selfieImage}
                     alt="Selfie preview"
-                    className="max-h-48 mx-auto rounded-xl object-contain"
+                    className="w-full max-h-64 object-contain"
+                    style={{ backgroundColor: "#F5F0EA" }}
                   />
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFormData({ ...formData, selfieImage: null });
-                    }}
+                    onClick={() =>
+                      setFormData({ ...formData, selfieImage: null })
+                    }
                     className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
                   >
@@ -923,23 +971,124 @@ export default function TwinClient({
                   </button>
                 </div>
               ) : (
-                <>
+                <div
+                  className="flex flex-col items-center justify-center py-12"
+                  style={{ backgroundColor: "#F5F0EA" }}
+                >
                   <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                    className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
                     style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
                   >
                     <Camera size={28} style={{ color: "#C9847A" }} />
                   </div>
                   <p
-                    className="font-semibold mb-1"
+                    className="font-semibold mb-4"
                     style={{ color: "#2B2B2B" }}
                   >
-                    Click to upload a selfie
+                    Upload your photo
                   </p>
-                  <p className="text-xs" style={{ color: "#7A6F68" }}>
+                  <div className="flex gap-3">
+                    <label
+                      className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white cursor-pointer transition-all hover:opacity-90"
+                      style={{ backgroundColor: "#C9847A" }}
+                    >
+                      Choose File
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              setFormData({
+                                ...formData,
+                                selfieImage: ev.target?.result as string,
+                              });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const stream =
+                            await navigator.mediaDevices.getUserMedia({
+                              video: { facingMode: "user" },
+                            });
+                          // Show video preview
+                          const video = document.createElement("video");
+                          video.srcObject = stream;
+                          video.autoplay = true;
+                          video.playsInline = true;
+                          video.muted = true;
+                          video.className = "w-full max-h-48 object-contain";
+
+                          const container = document.createElement("div");
+                          container.className = "relative";
+                          const previewDiv = document.querySelector(
+                            "#webcam-preview-container",
+                          ) as HTMLElement;
+                          if (previewDiv) {
+                            previewDiv.innerHTML = "";
+                            previewDiv.appendChild(video);
+
+                            // Add capture button
+                            const captureBtn = document.createElement("button");
+                            captureBtn.className =
+                              "absolute bottom-2 left-1/2 -translate-x-1/2 px-6 py-2 rounded-xl text-sm font-semibold text-white";
+                            captureBtn.style.backgroundColor = "#C9847A";
+                            captureBtn.textContent = "Capture";
+                            captureBtn.onclick = () => {
+                              const canvas = document.createElement("canvas");
+                              canvas.width = video.videoWidth;
+                              canvas.height = video.videoHeight;
+                              canvas.getContext("2d")?.drawImage(video, 0, 0);
+                              const imageData = canvas.toDataURL("image/jpeg");
+                              setFormData({
+                                ...formData,
+                                selfieImage: imageData,
+                              });
+                              stream.getTracks().forEach((t) => t.stop());
+                              if (previewDiv) previewDiv.innerHTML = "";
+                            };
+                            container.appendChild(captureBtn);
+
+                            // Add cancel button
+                            const cancelBtn = document.createElement("button");
+                            cancelBtn.className =
+                              "absolute bottom-2 right-2 px-4 py-2 rounded-xl text-sm font-medium";
+                            cancelBtn.style.backgroundColor = "#E5DDD5";
+                            cancelBtn.style.color = "#7A6F68";
+                            cancelBtn.textContent = "Cancel";
+                            cancelBtn.onclick = () => {
+                              stream.getTracks().forEach((t) => t.stop());
+                              if (previewDiv) previewDiv.innerHTML = "";
+                            };
+                            container.appendChild(cancelBtn);
+                          }
+                        } catch {
+                          alert("Camera access denied or not available");
+                        }
+                      }}
+                      className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
+                      style={{
+                        backgroundColor: "#F5F0EA",
+                        color: "#2B2B2B",
+                        border: "1px solid #E5DDD5",
+                      }}
+                    >
+                      Use Camera
+                    </button>
+                  </div>
+                  <p className="text-xs mt-3" style={{ color: "#7A6F68" }}>
                     JPG, PNG, WEBP supported
                   </p>
-                </>
+                  <div id="webcam-preview-container" className="mt-4 w-full" />
+                </div>
               )}
             </div>
 
@@ -1236,30 +1385,75 @@ export default function TwinClient({
                   })}
                 </div>
 
-                <button
-                  onClick={handleTryOn}
-                  disabled={selectedOutfit.length === 0 || tryonLoading}
-                  className="w-full py-3.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-                  style={{
-                    backgroundColor: "#C9847A",
-                    boxShadow:
-                      selectedOutfit.length > 0
-                        ? "0 4px 16px rgba(201,132,122,0.35)"
-                        : "none",
-                  }}
-                >
-                  {tryonLoading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Dressing your twin...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={16} />
-                      Try this outfit
-                    </>
-                  )}
-                </button>
+                <div className="space-y-3">
+                  <button
+                    onClick={handleTryOn}
+                    disabled={selectedOutfit.length === 0 || tryonLoading}
+                    className="w-full py-3.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+                    style={{
+                      backgroundColor: "#C9847A",
+                      boxShadow:
+                        selectedOutfit.length > 0
+                          ? "0 4px 16px rgba(201,132,122,0.35)"
+                          : "none",
+                    }}
+                  >
+                    {tryonLoading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Dressing your twin...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={16} />
+                        Try this outfit
+                      </>
+                    )}
+                  </button>
+
+                  {/* Demo: Try Black Look button */}
+                  <button
+                    onClick={async () => {
+                      if (!avatar) return;
+                      setTryonLoading(true);
+                      setError(null);
+                      try {
+                        const res = await fetch("/api/avatar/tryon", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            avatarUrl: avatar.avatarUrl,
+                            outfitItemIds: [],
+                            demoBlackLook: true,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (data.error) {
+                          setError(data.error);
+                          return;
+                        }
+                        setTryonResult(data.resultUrl || null);
+                      } catch (err) {
+                        console.error(err);
+                        setError(
+                          "Failed to generate try-on. Please try again.",
+                        );
+                      } finally {
+                        setTryonLoading(false);
+                      }
+                    }}
+                    disabled={tryonLoading || !avatar}
+                    className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+                    style={{
+                      backgroundColor: "#1a1a1a",
+                      color: "#ffffff",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <Sparkles size={16} />
+                    Try Black Look — Demo
+                  </button>
+                </div>
               </>
             )}
           </div>

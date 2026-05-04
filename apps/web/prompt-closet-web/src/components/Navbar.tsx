@@ -25,7 +25,7 @@ export default function Navbar() {
           backgroundColor: "rgba(245,240,234,0.95)",
           backdropFilter: "blur(12px)",
           borderBottom: "1px solid #E5DDD5",
-          "--logo-size-nav": "48px",
+          "--logo-size-nav": "250px",
         } as React.CSSProperties
       }
     >
@@ -34,7 +34,7 @@ export default function Navbar() {
         <img
           src="/logo.png"
           alt="Prompt Closet"
-          style={{ height: "var(--logo-size-nav, 500 px)", width: "auto" }}
+          style={{ height: "var(--logo-size-nav, 25px)", width: "auto" }}
         />
         <span className="font-bold text-lg" style={{ color: "#2B2B2B" }}>
           Prompt Closet

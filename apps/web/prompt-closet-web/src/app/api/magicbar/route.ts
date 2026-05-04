@@ -68,6 +68,22 @@ const COLOR_KEYWORDS: Record<string, string[]> = {
   brown: ["brown", "tan", "beige", "caramel", "chocolate"],
 };
 
+// Demo look detection — special "Full Black Look" for investor demo
+const DEMO_LOOK_KEYWORDS = [
+  "full black",
+  "all black",
+  "black look",
+  "black outfit",
+  "monochrome",
+  "all black outfit",
+  "full black outfit",
+];
+
+function isDemoLookQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return DEMO_LOOK_KEYWORDS.some((kw) => q.includes(kw));
+}
+
 interface ParsedQuery {
   occasions: string[];
   colors: string[];
@@ -150,6 +166,7 @@ function parseQuery(query: string): ParsedQuery {
         "with",
         "and",
         "combo",
+        "look",
       ].includes(word)
     ) {
       searchTerms.push(word);
@@ -264,6 +281,97 @@ function buildOutfits(items: WardrobeItem[], parsed: ParsedQuery): any[] {
 
   // Return top 6 outfits
   return outfits.slice(0, 6);
+}
+
+/**
+ * Build all-black outfit for demo query
+ */
+function buildBlackLookOutfit(items: WardrobeItem[]): any[] {
+  // Find black tops and black bottoms
+  const blackTops = items.filter((i) => {
+    if (
+      !["top", "shirt", "blouse", "tshirt"].includes(i.category.toLowerCase())
+    )
+      return false;
+    const colors = (i.colors || []).map((c) => c.toLowerCase());
+    return colors.some(
+      (c) =>
+        c.includes("black") || c.includes("#000000") || c.includes("charcoal"),
+    );
+  });
+
+  const blackBottoms = items.filter((i) => {
+    if (
+      !["bottom", "trousers", "pants", "jeans"].includes(
+        i.category.toLowerCase(),
+      )
+    )
+      return false;
+    const colors = (i.colors || []).map((c) => c.toLowerCase());
+    return colors.some(
+      (c) =>
+        c.includes("black") || c.includes("#000000") || c.includes("charcoal"),
+    );
+  });
+
+  const blackAccessories = items.filter((i) => {
+    const colors = (i.colors || []).map((c) => c.toLowerCase());
+    return (
+      ["accessory", "footwear"].includes(i.category.toLowerCase()) &&
+      colors.some(
+        (c) =>
+          c.includes("black") ||
+          c.includes("#000000") ||
+          c.includes("charcoal"),
+      )
+    );
+  });
+
+  // Try to build a black top + black bottom combo
+  if (blackTops.length > 0 && blackBottoms.length > 0) {
+    const outfit: any = {
+      item_ids: [blackTops[0].id, blackBottoms[0].id],
+      occasion_fit: "party",
+      outfit_name: "The All-Black Edit",
+      styling_tip:
+        "A monochrome black look — sleek, powerful, and effortlessly chic. Perfect for evening events or making a bold statement.",
+      confidence: 0.98,
+      occasion_fit_display: "Evening · Party · Date",
+    };
+
+    // Add a black accessory if available
+    if (blackAccessories.length > 0) {
+      outfit.item_ids.push(blackAccessories[0].id);
+      outfit.outfit_name = "The All-Black Edit + Accessory";
+    }
+
+    return [outfit];
+  }
+
+  // Fallback: any black items
+  const allBlack = items.filter((i) => {
+    const colors = (i.colors || []).map((c) => c.toLowerCase());
+    return colors.some(
+      (c) =>
+        c.includes("black") || c.includes("#000000") || c.includes("charcoal"),
+    );
+  });
+
+  if (allBlack.length > 0) {
+    return [
+      {
+        item_ids: allBlack.slice(0, 3).map((i) => i.id),
+        occasion_fit: "party",
+        outfit_name: "The All-Black Edit",
+        styling_tip:
+          "A monochrome black look — sleek, powerful, and effortlessly chic. Perfect for evening events or making a bold statement.",
+        confidence: 0.85,
+        occasion_fit_display: "Evening · Party · Date",
+      },
+    ];
+  }
+
+  return [];
 }
 
 /**
@@ -421,6 +529,36 @@ export async function POST(request: Request) {
         error:
           "Your wardrobe is empty. Add some items first to get outfit suggestions!",
       });
+    }
+
+    // Check for demo look query first
+    if (isDemoLookQuery(query)) {
+      const blackOutfits = buildBlackLookOutfit(items);
+      if (blackOutfits.length > 0) {
+        const outfitsWithPhotos = blackOutfits.map((outfit) => ({
+          ...outfit,
+          items: items
+            .filter((i) => outfit.item_ids.includes(i.id))
+            .map((i) => ({
+              id: i.id,
+              image_url: i.image_url,
+              suggested_name: i.suggested_name,
+              category: i.category,
+            })),
+        }));
+
+        return NextResponse.json({
+          outfits: outfitsWithPhotos,
+          usingKeywordSearch: true,
+          isDemoLook: true,
+          parsed: {
+            occasions: [],
+            colors: ["black"],
+            seasons: [],
+            formality: null,
+          },
+        });
+      }
     }
 
     // Parse the query

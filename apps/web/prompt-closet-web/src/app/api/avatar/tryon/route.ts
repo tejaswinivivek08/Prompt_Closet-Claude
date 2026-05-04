@@ -3,8 +3,11 @@ import { NextResponse } from "next/server";
 
 const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/image_generation";
 
+const ETHICAL_GUIDELINES =
+  "Create a respectful, dignified fashion illustration. Appropriate clothing coverage maintained at all times. No revealing or inappropriate content. Professional fashion photography style. Suitable for all audiences.";
+
 export async function POST(request: Request) {
-  const { avatarUrl, outfitItemIds } = await request.json();
+  const { avatarUrl, outfitItemIds, demoBlackLook } = await request.json();
   const miniMaxKey = process.env.MINIMAX_API_KEY;
 
   if (!miniMaxKey || miniMaxKey === "your-minimax-api-key-here") {
@@ -17,29 +20,36 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!avatarUrl || !outfitItemIds?.length) {
+  if (!avatarUrl) {
     return NextResponse.json(
-      { error: "Avatar and outfit items are required" },
+      { error: "Avatar URL is required" },
       { status: 400 },
     );
   }
 
-  // Fetch outfit item details to build a prompt
-  const supabase = await createClient();
-  const { data: outfitItems } = await supabase
-    .from("wardrobe_items")
-    .select("category, suggested_name, image_url")
-    .in("id", outfitItemIds)
-    .eq("is_active", true);
+  let prompt: string;
 
-  const itemDescriptions = (outfitItems || [])
-    .map((item) => item.suggested_name || item.category)
-    .filter(Boolean)
-    .join(", ");
+  if (demoBlackLook) {
+    // Special demo prompt for the "Full Black Look" investor demo
+    prompt = `${ETHICAL_GUIDELINES} Same Indian woman avatar wearing a classic black shirt and slim black trousers, full body view, white background, professional fashion photography, sleek monochrome outfit, high quality fashion editorial`;
+  } else {
+    // Fetch outfit item details to build a prompt
+    const supabase = await createClient();
+    const { data: outfitItems } = await supabase
+      .from("wardrobe_items")
+      .select("category, suggested_name, image_url")
+      .in("id", outfitItemIds)
+      .eq("is_active", true);
 
-  const prompt = itemDescriptions
-    ? `Fashion model wearing ${itemDescriptions}, full body, neutral studio background, high quality fashion photography, editorial style, detailed fabric texture`
-    : `Fashion model wearing stylish outfit, full body, neutral background, high quality fashion photography`;
+    const itemDescriptions = (outfitItems || [])
+      .map((item) => item.suggested_name || item.category)
+      .filter(Boolean)
+      .join(", ");
+
+    prompt = itemDescriptions
+      ? `${ETHICAL_GUIDELINES} Fashion model wearing ${itemDescriptions}, full body, neutral studio background, high quality fashion photography, editorial style, detailed fabric texture`
+      : `${ETHICAL_GUIDELINES} Fashion model wearing stylish outfit, full body, neutral background, high quality fashion photography`;
+  }
 
   try {
     const res = await fetch(MINIMAX_API_URL, {
@@ -77,12 +87,13 @@ export async function POST(request: Request) {
     }
 
     // Save try-on result
+    const supabase = await createClient();
     const userId = (await supabase.auth.getUser()).data.user?.id;
     if (userId) {
       await supabase.from("try_on_results").insert({
         user_id: userId,
         avatar_url: avatarUrl,
-        outfit_item_ids: outfitItemIds,
+        outfit_item_ids: outfitItemIds || [],
         result_image_url: resultUrl,
       });
     }
