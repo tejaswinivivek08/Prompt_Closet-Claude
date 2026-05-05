@@ -79,9 +79,25 @@ const DEMO_LOOK_KEYWORDS = [
   "full black outfit",
 ];
 
+// Festive occasion keywords for demo fallback
+const FESTIVE_KEYWORDS = [
+  "diwali",
+  "festive",
+  "eid",
+  "holi",
+  "traditional",
+  "indian wear",
+  "ethnic wear",
+];
+
 function isDemoLookQuery(query: string): boolean {
   const q = query.toLowerCase();
   return DEMO_LOOK_KEYWORDS.some((kw) => q.includes(kw));
+}
+
+function isFestiveQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return FESTIVE_KEYWORDS.some((kw) => q.includes(kw));
 }
 
 interface ParsedQuery {
@@ -375,6 +391,66 @@ function buildBlackLookOutfit(items: WardrobeItem[]): any[] {
 }
 
 /**
+ * Build festive demo outfits for Indian occasions - investor demo fallback
+ */
+function buildFestiveDemoOutfits(items: WardrobeItem[]): any[] {
+  // Find any tops and bottoms to build outfits
+  const tops = items.filter((i) =>
+    ["top", "dress", "outerwear", "traditional"].includes(
+      i.category.toLowerCase(),
+    ),
+  );
+  const bottoms = items.filter((i) =>
+    ["bottom"].includes(i.category.toLowerCase()),
+  );
+
+  if (tops.length === 0 && bottoms.length === 0 && items.length === 0) {
+    return [];
+  }
+
+  const outfits: any[] = [];
+
+  // Build festive outfit from any available items
+  if (tops.length > 0 && bottoms.length > 0) {
+    outfits.push({
+      item_ids: [tops[0].id, bottoms[0].id],
+      occasion_fit: "festive",
+      outfit_name: "Festive Traditional Look",
+      styling_tip:
+        "A beautiful festive ensemble combining traditional elegance with modern style. Perfect for Diwali celebrations and festive gatherings.",
+      confidence: 0.88,
+      weather_context: "Light layers for air-conditioned venues",
+    });
+  } else if (tops.length > 0) {
+    outfits.push({
+      item_ids: [tops[0].id],
+      occasion_fit: "festive",
+      outfit_name: "Festive Top",
+      styling_tip:
+        "Style this festive top with traditional bottoms or a saree for a complete Diwali look. Add some gold jewelry to complete the celebration!",
+      confidence: 0.85,
+    });
+  }
+
+  // Add a saree-inspired look if we have enough items
+  const traditionalItems = items.filter((i) =>
+    ["traditional", "dress"].includes(i.category.toLowerCase()),
+  );
+  if (traditionalItems.length > 0) {
+    outfits.push({
+      item_ids: traditionalItems.slice(0, 1).map((i) => i.id),
+      occasion_fit: "festive",
+      outfit_name: "Traditional Elegance",
+      styling_tip:
+        "A stunning traditional piece perfect for Diwali puja and celebrations. Pair with traditional jewelry for the full festive experience.",
+      confidence: 0.92,
+    });
+  }
+
+  return outfits.slice(0, 3);
+}
+
+/**
  * Generate styling tip based on outfit and query
  */
 function generateStylingTip(
@@ -556,6 +632,36 @@ export async function POST(request: Request) {
             colors: ["black"],
             seasons: [],
             formality: null,
+          },
+        });
+      }
+    }
+
+    // Check for festive query with fallback for demo
+    if (isFestiveQuery(query)) {
+      const festiveOutfits = buildFestiveDemoOutfits(items);
+      if (festiveOutfits.length > 0) {
+        const outfitsWithPhotos = festiveOutfits.map((outfit) => ({
+          ...outfit,
+          items: items
+            .filter((i) => outfit.item_ids.includes(i.id))
+            .map((i) => ({
+              id: i.id,
+              image_url: i.image_url,
+              suggested_name: i.suggested_name,
+              category: i.category,
+            })),
+        }));
+
+        return NextResponse.json({
+          outfits: outfitsWithPhotos,
+          usingKeywordSearch: true,
+          isFestiveDemo: true,
+          parsed: {
+            occasions: ["festive"],
+            colors: [],
+            seasons: [],
+            formality: "mid",
           },
         });
       }
