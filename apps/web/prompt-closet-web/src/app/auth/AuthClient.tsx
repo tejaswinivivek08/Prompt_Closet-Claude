@@ -263,7 +263,7 @@ export default function AuthClient() {
             className="mt-6 p-3 rounded-xl text-xs text-center"
             style={{ backgroundColor: "#F5F0EA", color: "#7A6F68" }}
           >
-            Demo: tejaswini.smu.mba@gmail.com
+            Demo: Sign up with any email + password to test
           </div>
         </div>
       </div>
