@@ -18,8 +18,8 @@ BEGIN
   END IF;
 
   -- Ensure profiles row exists
-  INSERT INTO profiles (id, full_name, created_at, updated_at)
-  VALUES (target_user_id, 'Demo User', NOW(), NOW())
+  INSERT INTO profiles (id, full_name, created_at)
+  VALUES (target_user_id, 'Demo User', NOW())
   ON CONFLICT (id) DO NOTHING;
 
   -- Delete any existing wardrobe items for this user (for clean re-seed)
