@@ -7,15 +7,20 @@ import {
   ThumbsDown,
   Clock,
   Thermometer,
+  Search,
+  X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const QUICK_PROMPTS = [
-  "Diwali outfit",
-  "Office Monday",
-  "Wedding guest",
-  "Casual weekend",
-  "Date night",
+  { label: "Diwali outfit", emoji: "✨" },
+  { label: "Office Monday", emoji: "💼" },
+  { label: "Wedding guest", emoji: "💍" },
+  { label: "Casual weekend", emoji: "☀️" },
+  { label: "Date night", emoji: "🌙" },
+  { label: "Garden party", emoji: "🌸" },
+  { label: "Brunch with friends", emoji: "🥂" },
+  { label: "Airport travel", emoji: "✈️" },
 ];
 
 const PLACEHOLDERS = [
@@ -428,9 +433,9 @@ export default function StyleClient({
     setOutfits(outfits.filter((o) => o.outfit_name !== outfit.outfit_name));
   };
 
-  const handleQuickPrompt = (prompt: string) => {
-    setQuery(prompt);
-    handleSearch(prompt);
+  const handleQuickPrompt = (label: string) => {
+    setQuery(label);
+    handleSearch(label);
   };
 
   return (
@@ -450,44 +455,67 @@ export default function StyleClient({
         className="rounded-2xl p-6 mb-6"
         style={{
           backgroundColor: "#FFFFFF",
-          boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
           border: "1px solid #F0EBE6",
         }}
       >
-        <textarea
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              handleSearch(query);
-            }
-          }}
-          placeholder={PLACEHOLDERS[placeholderIdx]}
-          className="w-full px-4 py-3.5 rounded-xl resize-none text-sm mb-4 transition-all"
+        {/* Search input row */}
+        <div
+          className="flex items-start gap-3 rounded-2xl px-4 py-3.5 mb-5 transition-all"
           style={{
             backgroundColor: "#F5F0EA",
-            border: "1px solid #E5DDD5",
-            color: "#2B2B2B",
-            outline: "none",
-            lineHeight: 1.6,
+            border: "1.5px solid #E5DDD5",
           }}
-          rows={3}
-        />
-
-        {/* Quick prompts — 5 chips */}
-        <div className="flex gap-2 flex-wrap mb-4">
-          {QUICK_PROMPTS.map((p) => (
+        >
+          <Search
+            size={18}
+            className="mt-0.5 shrink-0"
+            style={{ color: "#C9847A" }}
+          />
+          <textarea
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                handleSearch(query);
+              }
+            }}
+            placeholder={PLACEHOLDERS[placeholderIdx]}
+            className="flex-1 resize-none text-sm bg-transparent"
+            style={{
+              color: "#2B2B2B",
+              outline: "none",
+              lineHeight: 1.7,
+              minHeight: "64px",
+            }}
+            rows={3}
+          />
+          {query && (
             <button
-              key={p}
-              onClick={() => handleQuickPrompt(p)}
-              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:opacity-80 active:scale-95"
+              onClick={() => setQuery("")}
+              className="mt-0.5 shrink-0 transition-opacity hover:opacity-60"
+              style={{ color: "#7A6F68" }}
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* Quick prompts */}
+        <div className="flex gap-2 flex-wrap mb-5">
+          {QUICK_PROMPTS.map(({ label, emoji }) => (
+            <button
+              key={label}
+              onClick={() => handleQuickPrompt(label)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all hover:shadow-sm active:scale-95"
               style={{
                 backgroundColor: "#F5F0EA",
                 color: "#2B2B2B",
                 border: "1px solid #E5DDD5",
               }}
             >
-              {p}
+              <span>{emoji}</span>
+              {label}
             </button>
           ))}
         </div>
@@ -495,28 +523,29 @@ export default function StyleClient({
         <button
           onClick={() => handleSearch(query)}
           disabled={!query.trim() || loading}
-          className="w-full py-3.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 active:scale-98"
+          className="w-full py-4 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 active:scale-98"
           style={{
             backgroundColor: "#C9847A",
-            boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+            boxShadow: "0 4px 20px rgba(201,132,122,0.4)",
+            letterSpacing: "0.01em",
           }}
         >
           <Sparkles size={16} />
           {loading ? "Finding outfits..." : "Style Me"}
         </button>
 
-        <p className="text-xs text-center mt-2" style={{ color: "#7A6F68" }}>
+        <p className="text-xs text-center mt-3" style={{ color: "#A8A0A0" }}>
           Press{" "}
           <kbd
             className="px-1.5 py-0.5 rounded text-xs font-mono"
-            style={{ backgroundColor: "#E5DDD5", color: "#2B2B2B" }}
+            style={{ backgroundColor: "#E5DDD5", color: "#5A5A5A" }}
           >
             Ctrl
           </kbd>{" "}
           +{" "}
           <kbd
             className="px-1.5 py-0.5 rounded text-xs font-mono"
-            style={{ backgroundColor: "#E5DDD5", color: "#2B2B2B" }}
+            style={{ backgroundColor: "#E5DDD5", color: "#5A5A5A" }}
           >
             Enter
           </kbd>{" "}
