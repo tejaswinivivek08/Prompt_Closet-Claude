@@ -78,3 +78,4 @@ secrets/
 **/scripts/data/
 **/scripts/outputs/
 **/scripts/*.log
+.vercel

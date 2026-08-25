@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function AuthClient() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
@@ -18,18 +20,52 @@ export default function AuthClient() {
     setLoading(true);
     setMessage(null);
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
-
-    if (error) {
-      setMessage({ text: error.message, type: "error" });
-    } else {
-      setMessage({
-        text: "Magic link sent! Check your email.",
-        type: "success",
+    if (mode === "signin") {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+
+      if (error) {
+        setMessage({ text: error.message, type: "error" });
+      } else {
+        window.location.href = "/app/closet";
+      }
+    } else {
+      if (password !== confirmPassword) {
+        setMessage({ text: "Passwords do not match", type: "error" });
+        setLoading(false);
+        return;
+      }
+
+      if (password.length < 6) {
+        setMessage({
+          text: "Password must be at least 6 characters",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        setMessage({ text: error.message, type: "error" });
+      } else {
+        setMessage({
+          text: "Account created! Check your email to confirm, then sign in.",
+          type: "success",
+        });
+        setMode("signin");
+        setPassword("");
+        setConfirmPassword("");
+      }
     }
     setLoading(false);
   };
@@ -138,6 +174,56 @@ export default function AuthClient() {
               />
             </div>
 
+            <div>
+              <label
+                className="block text-sm font-medium mb-2"
+                style={{ color: "#2B2B2B" }}
+              >
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                className="w-full px-4 py-3.5 rounded-xl text-sm transition-all"
+                style={{
+                  backgroundColor: "#F5F0EA",
+                  border: "1px solid #E5DDD5",
+                  color: "#2B2B2B",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#2B2B2B" }}
+                >
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-3.5 rounded-xl text-sm transition-all"
+                  style={{
+                    backgroundColor: "#F5F0EA",
+                    border: "1px solid #E5DDD5",
+                    color: "#2B2B2B",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -148,9 +234,9 @@ export default function AuthClient() {
               }}
             >
               {loading
-                ? "Sending..."
+                ? "Please wait..."
                 : mode === "signin"
-                  ? "Send Magic Link"
+                  ? "Sign In"
                   : "Create Account"}
             </button>
           </form>
@@ -171,6 +257,14 @@ export default function AuthClient() {
           <p className="mt-8 text-center text-xs" style={{ color: "#7A6F68" }}>
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
+
+          {/* Demo credentials hint */}
+          <div
+            className="mt-6 p-3 rounded-xl text-xs text-center"
+            style={{ backgroundColor: "#F5F0EA", color: "#7A6F68" }}
+          >
+            Demo: Sign up with any email + password to test
+          </div>
         </div>
       </div>
     </div>

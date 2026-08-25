@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 
 const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/image_generation";
 
+const ETHICAL_GUIDELINES =
+  "Create a respectful, dignified fashion illustration. Appropriate clothing coverage maintained at all times. No revealing or inappropriate content. Professional fashion photography style. Suitable for all audiences.";
+
 export async function POST(request: Request) {
   const { imageData, userId, regenerate, customPrompt } = await request.json();
   const miniMaxKey = process.env.MINIMAX_API_KEY;
@@ -33,12 +36,12 @@ export async function POST(request: Request) {
     }
   }
 
-  // Use custom prompt if provided, otherwise use default
+  // Use custom prompt if provided, otherwise use default with ethical guidelines
   const prompt =
     customPrompt ||
     (promptImageUrl
-      ? "Fashion illustration of a person, stylized fashion portrait, vibrant colors, studio lighting, high quality, digital fashion art, detailed illustration"
-      : "Professional fashion model photography, full body shot, neutral background, fashion editorial style, high quality, stylized avatar");
+      ? `${ETHICAL_GUIDELINES} Fashion illustration of a person, stylized fashion portrait, vibrant colors, studio lighting, high quality, digital fashion art, detailed illustration`
+      : `${ETHICAL_GUIDELINES} Professional fashion model photography, full body shot, neutral background, fashion editorial style, high quality, stylized avatar`);
 
   try {
     const requestBody: Record<string, unknown> = {

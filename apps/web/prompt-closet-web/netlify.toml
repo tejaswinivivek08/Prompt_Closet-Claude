@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NEXT_PUBLIC_SUPABASE_URL = "https://uhwzfpedovwopohldtnx.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVod3pmcGVkb3Z3b3BvaGxkdG54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzOTkxODIsImV4cCI6MjA5MTk3NTE4Mn0.JK-YAtfpZo2bnV4vPP3aesU1au96TFcCfT98p2PVbIc"
+  NEXT_PUBLIC_SITE_URL = "https://prompt-closet.netlify.app"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
