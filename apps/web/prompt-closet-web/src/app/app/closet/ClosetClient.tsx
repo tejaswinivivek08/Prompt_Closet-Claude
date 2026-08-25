@@ -82,7 +82,7 @@ export default function ClosetClient({
         const { item: analyzedItem } = await response.json();
 
         // Add the new item to state
-        setItems([analyzedItem, ...items]);
+        setItems((prev) => [analyzedItem, ...prev]);
       } catch {
         // Fallback: create item with basic data
         const { data: newItem, error: insertError } = await supabase
@@ -97,7 +97,7 @@ export default function ClosetClient({
           .select()
           .single();
         if (insertError) throw insertError;
-        setItems([newItem, ...items]);
+        setItems((prev) => [newItem, ...prev]);
       }
     } catch (err) {
       console.error(err);
@@ -165,15 +165,28 @@ export default function ClosetClient({
     stopWebcam();
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setPreviewImage(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-    stopWebcam();
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (files.length === 1) {
+      // Single file: show preview as before
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPreviewImage(ev.target?.result as string);
+      };
+      reader.readAsDataURL(files[0]);
+      stopWebcam();
+      return;
+    }
+
+    // Multiple files: close modal and upload each sequentially
+    closeUploadModal();
+    for (let i = 0; i < files.length; i++) {
+      await uploadFile(files[i]);
+    }
+    // Reset the input so the same files can be selected again
+    e.target.value = "";
   };
 
   const handleDropOnModal = (e: React.DragEvent) => {
@@ -219,7 +232,7 @@ export default function ClosetClient({
           body: JSON.stringify({ imageUrl: publicUrl, userId }),
         });
         const { item: analyzedItem } = await response.json();
-        setItems([analyzedItem, ...items]);
+        setItems((prev) => [analyzedItem, ...prev]);
       } catch {
         const { data: newItem, error: insertError } = await supabase
           .from("wardrobe_items")
@@ -233,7 +246,7 @@ export default function ClosetClient({
           .select()
           .single();
         if (insertError) throw insertError;
-        setItems([newItem, ...items]);
+        setItems((prev) => [newItem, ...prev]);
       }
     } catch (err) {
       console.error(err);
@@ -345,12 +358,13 @@ export default function ClosetClient({
                     Drop photo here or click to browse
                   </p>
                   <p className="text-xs" style={{ color: "#7A6F68" }}>
-                    JPG, PNG, WEBP supported
+                    JPG, PNG, WEBP · select multiple to add in bulk
                   </p>
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     onChange={handleFileSelect}
                   />
