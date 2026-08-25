@@ -30,6 +30,18 @@ const occasionColors: Record<string, string> = {
   beach: "#5BA8C4",
   date: "#D4847C",
   sport: "#6B8E6B",
+  travel: "#5BA8C4",
+  lounge: "#9E9E9E",
+  brunch: "#C9A96E",
+  outdoor: "#6B8E6B",
+  gym: "#6B8E6B",
+  college: "#4A7B9D",
+  birthday: "#B5A0C9",
+  anniversary: "#D4847C",
+  cocktail: "#B5A0C9",
+  traditional: "#C9847A",
+  dinner: "#D4847C",
+  formal: "#4A7B9D",
 };
 
 const CATEGORIES = [
@@ -52,6 +64,18 @@ const OCCASIONS = [
   "beach",
   "date",
   "sport",
+  "travel",
+  "lounge",
+  "brunch",
+  "outdoor",
+  "gym",
+  "college",
+  "birthday",
+  "anniversary",
+  "cocktail",
+  "traditional",
+  "dinner",
+  "formal",
 ];
 
 export default function ItemDetailModal({
@@ -69,6 +93,7 @@ export default function ItemDetailModal({
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [imageLoading, setImageLoading] = useState<Record<number, boolean>>({});
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+  const [customOccasion, setCustomOccasion] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Normalize item to always have image_urls array
@@ -86,7 +111,6 @@ export default function ItemDetailModal({
     occasions: item.occasions || [],
     pattern: item.pattern || "",
     fabric: item.fabric || "",
-    formality_score: item.formality_score || 3,
     season: item.season || [],
     style_notes: item.style_notes || "",
     image_urls: imageUrls,
@@ -104,7 +128,6 @@ export default function ItemDetailModal({
           occasions: form.occasions,
           pattern: form.pattern,
           fabric: form.fabric,
-          formality_score: form.formality_score,
           season: form.season,
           style_notes: form.style_notes,
           image_urls: form.image_urls,
@@ -222,6 +245,16 @@ export default function ItemDetailModal({
     setForm({ ...form, occasions });
   };
 
+  const addCustomOccasion = () => {
+    const val = customOccasion.trim().toLowerCase();
+    if (!val || form.occasions.includes(val)) {
+      setCustomOccasion("");
+      return;
+    }
+    setForm({ ...form, occasions: [...form.occasions, val] });
+    setCustomOccasion("");
+  };
+
   return (
     <>
       <div
@@ -265,7 +298,6 @@ export default function ItemDetailModal({
                       occasions: item.occasions || [],
                       pattern: item.pattern || "",
                       fabric: item.fabric || "",
-                      formality_score: item.formality_score || 3,
                       season: item.season || [],
                       style_notes: item.style_notes || "",
                       image_urls: imageUrls,
@@ -625,7 +657,7 @@ export default function ItemDetailModal({
                 >
                   Occasions
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-3">
                   {OCCASIONS.map((occ) => (
                     <button
                       key={occ}
@@ -643,6 +675,40 @@ export default function ItemDetailModal({
                       {occ}
                     </button>
                   ))}
+                  {form.occasions
+                    .filter((o: string) => !OCCASIONS.includes(o))
+                    .map((occ: string) => (
+                      <button
+                        key={occ}
+                        onClick={() => toggleOccasion(occ)}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-all"
+                        style={{ backgroundColor: "#7B9E87", color: "#FFFFFF" }}
+                      >
+                        {occ} ×
+                      </button>
+                    ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={customOccasion}
+                    onChange={(e) => setCustomOccasion(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addCustomOccasion()}
+                    placeholder="Add your own occasion..."
+                    className="flex-1 px-3 py-2 rounded-xl text-xs"
+                    style={{
+                      backgroundColor: "#F5F0EA",
+                      border: "1px solid #E5DDD5",
+                      color: "#2B2B2B",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={addCustomOccasion}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold text-white"
+                    style={{ backgroundColor: "#C9847A" }}
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
 
@@ -690,66 +756,6 @@ export default function ItemDetailModal({
                   }}
                   placeholder="e.g. cotton, silk, linen"
                 />
-              </div>
-
-              {/* Formality Slider */}
-              <div>
-                <label
-                  className="block text-xs font-medium mb-2 uppercase tracking-wide"
-                  style={{ color: "#7A6F68" }}
-                >
-                  Formality:{" "}
-                  <span className="capitalize" style={{ color: "#2B2B2B" }}>
-                    {form.formality_score <= 2
-                      ? "Casual"
-                      : form.formality_score === 3
-                        ? "Smart Casual"
-                        : form.formality_score === 4
-                          ? "Formal"
-                          : "Black Tie"}
-                  </span>
-                </label>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs" style={{ color: "#7A6F68" }}>
-                    Casual
-                  </span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={form.formality_score}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        formality_score: parseInt(e.target.value),
-                      })
-                    }
-                    className="flex-1 h-2 rounded-full appearance-none cursor-pointer"
-                    style={{
-                      backgroundColor: "#E5DDD5",
-                      accentColor: "#C9847A",
-                    }}
-                  />
-                  <span className="text-xs" style={{ color: "#7A6F68" }}>
-                    Formal
-                  </span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <span
-                      key={n}
-                      className="text-xs w-5 text-center"
-                      style={{
-                        color:
-                          form.formality_score === n ? "#C9847A" : "#E5DDD5",
-                        fontWeight:
-                          form.formality_score === n ? "bold" : "normal",
-                      }}
-                    >
-                      {n}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           ) : (
@@ -859,27 +865,6 @@ export default function ItemDetailModal({
                     style={{ color: "#2B2B2B" }}
                   >
                     {form.fabric}
-                  </p>
-                </div>
-              )}
-
-              {form.formality_score && (
-                <div className="mb-5">
-                  <p
-                    className="text-xs font-medium uppercase tracking-wide mb-1"
-                    style={{ color: "#7A6F68" }}
-                  >
-                    Formality
-                  </p>
-                  <p className="text-sm" style={{ color: "#2B2B2B" }}>
-                    {form.formality_score <= 2
-                      ? "Casual"
-                      : form.formality_score === 3
-                        ? "Smart Casual"
-                        : form.formality_score === 4
-                          ? "Formal"
-                          : "Black Tie"}{" "}
-                    ({form.formality_score}/5)
                   </p>
                 </div>
               )}
