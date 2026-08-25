@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles, ArrowRight, Check, Star } from "lucide-react";
+import {
+  Sparkles,
+  Shirt,
+  Droplet,
+  ArrowRight,
+  Check,
+  Star,
+} from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -63,8 +70,17 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="px-6 py-24 text-center">
+      <section className="px-6 py-20 text-center">
         <div className="max-w-3xl mx-auto">
+          {/* Logo large */}
+          <div className="flex justify-center mb-8">
+            <img
+              src="/logo.png"
+              alt="Prompt Closet"
+              style={{ height: "var(--logo-size-hero, 80px)", width: "auto" }}
+            />
+          </div>
+
           <h1
             className="text-5xl font-bold mb-4 leading-tight"
             style={{ color: "#2B2B2B", fontFamily: "Georgia, serif" }}
@@ -153,7 +169,7 @@ export default function LandingPage() {
               }}
             >
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
                 <img
@@ -183,7 +199,7 @@ export default function LandingPage() {
               }}
             >
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
                 <img
@@ -213,11 +229,11 @@ export default function LandingPage() {
               }}
             >
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
                 <img
-                  src="/icons/User Profile Icon.png"
+                  src="/icons/Style Icon.png"
                   alt="Digital Twin"
                   className="w-10 h-10 object-contain"
                 />

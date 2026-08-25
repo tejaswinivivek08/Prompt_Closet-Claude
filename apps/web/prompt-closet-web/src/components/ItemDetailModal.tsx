@@ -108,7 +108,6 @@ export default function ItemDetailModal({
           season: form.season,
           style_notes: form.style_notes,
           image_urls: form.image_urls,
-          image_url: form.image_urls[0],
         })
         .eq("id", item.id)
         .select()
@@ -160,10 +159,10 @@ export default function ItemDetailModal({
       const newUrls = [...form.image_urls, urlData.publicUrl];
       setForm({ ...form, image_urls: newUrls });
 
-      // Auto-save the new photo URL and sync cover
+      // Auto-save the new photo URL
       await supabase
         .from("wardrobe_items")
-        .update({ image_urls: newUrls, image_url: newUrls[0] })
+        .update({ image_urls: newUrls })
         .eq("id", item.id);
     } catch (err) {
       console.error("Photo upload error:", err);
@@ -184,9 +183,8 @@ export default function ItemDetailModal({
     setCurrentPhotoIndex(0);
     await supabase
       .from("wardrobe_items")
-      .update({ image_urls: newUrls, image_url: newUrls[0] })
+      .update({ image_urls: newUrls })
       .eq("id", item.id);
-    onUpdate(item.id, { ...item, image_url: newUrls[0], image_urls: newUrls });
   };
 
   const handleRemovePhoto = async (index: number) => {
@@ -203,9 +201,8 @@ export default function ItemDetailModal({
     }
     await supabase
       .from("wardrobe_items")
-      .update({ image_urls: newUrls, image_url: newUrls[0] })
+      .update({ image_urls: newUrls })
       .eq("id", item.id);
-    onUpdate(item.id, { ...item, image_url: newUrls[0], image_urls: newUrls });
   };
 
   const toggleColor = (color: string) => {
