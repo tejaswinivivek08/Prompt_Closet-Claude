@@ -60,7 +60,7 @@ export default function Navbar() {
               <img
                 src={`/icons/${link.icon}`}
                 alt={link.label}
-                className="w-4 h-4 object-contain"
+                className="w-6 h-6 object-contain"
               />
               {link.label}
             </Link>
@@ -122,7 +122,7 @@ export default function Navbar() {
                   <img
                     src={`/icons/${link.icon}`}
                     alt={link.label}
-                    className="w-5 h-5 object-contain"
+                    className="w-6 h-6 object-contain"
                   />
                   {link.label}
                 </Link>

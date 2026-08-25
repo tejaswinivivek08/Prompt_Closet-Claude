@@ -33,7 +33,7 @@ export default function AppNav() {
             <img
               src={`/icons/${icon}`}
               alt={label}
-              className="w-5 h-5 object-contain"
+              className="w-6 h-6 object-contain"
               style={{ opacity: isActive ? 1 : 0.7 }}
             />
             <span className="hidden sm:inline">{label}</span>

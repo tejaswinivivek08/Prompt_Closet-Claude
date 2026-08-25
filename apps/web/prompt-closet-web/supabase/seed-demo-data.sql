@@ -25,7 +25,7 @@ BEGIN
   -- Delete any existing wardrobe items for this user (for clean re-seed)
   DELETE FROM wardrobe_items WHERE user_id = target_user_id;
 
-  -- Insert 18 demo clothing items
+  -- Insert 33 demo items (clothing + accessories)
   INSERT INTO wardrobe_items (user_id, image_url, category, subcategory, colors, pattern, fabric, occasions, formality_score, season, suggested_name, style_notes, is_active, created_at) VALUES
 
   (target_user_id, 'https://picsum.photos/seed/navy-kurta/600/800', 'top', 'kurta', '{"#000080"}', 'embroidered', 'cotton', '{"festive","casual","formal"}', 4, '{"summer","fall"}', 'Navy Embroidered Cotton Kurta', 'Elegant navy kurta with delicate chikankari embroidery. Versatile for both festive occasions and formal gatherings.', true, NOW()),
@@ -62,9 +62,41 @@ BEGIN
 
   (target_user_id, 'https://picsum.photos/seed/grey-tshirt/600/800', 'top', 't-shirt', '{"#808080"}', 'solid', 'cotton blend', '{"casual","lounge"}', 1, '{"spring","summer","fall"}', 'Grey Melange Round Neck T-Shirt', 'Soft grey melange round neck t-shirt in a comfortable cotton blend. Your go-to for laid-back weekends and lounging at home.', true, NOW()),
 
-  (target_user_id, 'https://picsum.photos/seed/black-jeans/600/800', 'bottom', 'jeans', '{"#000000"}', 'solid', 'denim', '{"casual","date","outdoor"}', 2, '{"spring","fall","winter"}', 'Black Ankle-Length Jeans', 'Sleek black ankle-length jeans with a slim fit and slight stretch for comfort. Versatile enough for dates and casual Fridays.', true, NOW());
+  (target_user_id, 'https://picsum.photos/seed/black-jeans/600/800', 'bottom', 'jeans', '{"#000000"}', 'solid', 'denim', '{"casual","date","outdoor"}', 2, '{"spring","fall","winter"}', 'Black Ankle-Length Jeans', 'Sleek black ankle-length jeans with a slim fit and slight stretch for comfort. Versatile enough for dates and casual Fridays.', true, NOW()),
 
-  RAISE NOTICE 'Successfully seeded 18 demo wardrobe items for user';
+  -- New clothing items
+  (target_user_id, 'https://picsum.photos/seed/peach-dinner-dress/600/800', 'dress', 'midi dress', '{"#FFCBA4","#FFB347"}', 'solid', 'chiffon', '{"dinner","date","casual","restaurant"}', 3, '{"spring","summer"}', 'Peach Chiffon Midi Dress', 'Soft peach chiffon midi dress with a flowy silhouette and subtle drape. Perfect for a casual dinner out with your husband — romantic yet effortless.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/red-romantic-dress/600/800', 'dress', 'bodycon dress', '{"#CC0000","#8B0000"}', 'solid', 'satin', '{"dinner","date","party","romantic"}', 4, '{"all-season"}', 'Red Satin Romantic Dinner Dress', 'Deep red satin bodycon dress with a wrap silhouette and subtle sheen. A showstopper for romantic dinner dates and special evenings.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/white-formal-shirt/600/800', 'top', 'shirt', '{"#FFFFFF","#F8F8F8"}', 'solid', 'cotton', '{"office","formal","business","meeting"}', 4, '{"all-season"}', 'White Cotton Formal Shirt', 'Crisp white formal shirt with a tailored collar and concealed buttons. A boardroom essential that pairs with everything from blazers to trousers.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/black-formal-pants/600/800', 'bottom', 'trousers', '{"#1C1C1C","#000000"}', 'solid', 'polyester blend', '{"office","formal","business","meeting"}', 4, '{"all-season"}', 'Black Slim Formal Trousers', 'Sleek black slim-fit trousers with a mid-rise and pressed crease. The cornerstone of any formal or business outfit.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/rust-tshirt/600/800', 'top', 't-shirt', '{"#B7410E","#CF6D17"}', 'solid', 'cotton', '{"casual","everyday","lounge","outdoor"}', 1, '{"spring","summer","fall"}', 'Rust Orange Cotton T-Shirt', 'Easy rust orange crew neck tee in 100% breathable cotton. The perfect daily casual wear — throw it on with jeans or shorts and go.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/white-denim-jeans/600/800', 'bottom', 'jeans', '{"#FFFFFF","#F5F5F5"}', 'solid', 'denim', '{"casual","brunch","outdoor","date"}', 2, '{"spring","summer"}', 'White Denim Jeans', 'Clean white slim-fit denim jeans with a bright finish. Effortlessly chic for brunch, outdoor days, and casual date evenings.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/black-skorts/600/800', 'bottom', 'skort', '{"#000000","#1C1C1C"}', 'solid', 'polyester', '{"casual","sport","outdoor","travel"}', 2, '{"spring","summer"}', 'Black Athletic Skorts', 'Flattering black skorts combining a skirt front with built-in shorts. Great for active days, travel, and casual outdoor errands.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/blue-denim-skorts/600/800', 'bottom', 'skort', '{"#3B5998","#6F8FAF"}', 'solid', 'denim', '{"casual","brunch","outdoor","weekend"}', 2, '{"spring","summer"}', 'Blue Denim Skorts', 'Cute denim skorts with a medium wash and relaxed fit. The best of both worlds — skirt style with shorts comfort for weekend adventures.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/purple-tshirt/600/800', 'top', 't-shirt', '{"#6A0DAD","#9B59B6"}', 'solid', 'cotton', '{"casual","everyday","lounge"}', 1, '{"spring","summer","fall"}', 'Purple Cotton Crew Neck T-Shirt', 'Soft lavender-purple crew neck tee in comfortable cotton. A fun pop of colour for casual everyday looks.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/pink-shirt/600/800', 'top', 'shirt', '{"#FFB6C1","#FF69B4"}', 'solid', 'cotton', '{"casual","office","brunch","date"}', 3, '{"spring","summer"}', 'Pink Button-Down Shirt', 'Soft pink button-down shirt in lightweight cotton. Polished enough for a casual office day, relaxed enough for brunch or dates.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/pink-tshirt/600/800', 'top', 't-shirt', '{"#FF69B4","#FFC0CB"}', 'solid', 'cotton', '{"casual","everyday","lounge","outdoor"}', 1, '{"spring","summer"}', 'Pink Graphic Oversized T-Shirt', 'Breezy bubblegum pink oversized tee in cotton jersey. A feel-good everyday staple for errands, walks, and lazy Sundays.', true, NOW()),
+
+  -- Accessories
+  (target_user_id, 'https://picsum.photos/seed/gold-watch/600/400', 'accessory', 'watch', '{"#FFD700","#C5A028"}', 'solid', 'metal', '{"formal","office","casual","dinner","date"}', 4, '{"all-season"}', 'Gold-Tone Dress Watch', 'Elegant gold-tone dress watch with a minimalist dial and slim profile. The perfect finishing touch for both formal and smart-casual outfits.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/sunglasses/600/400', 'accessory', 'sunglasses', '{"#000000","#704214"}', 'solid', 'acetate', '{"outdoor","casual","beach","travel","casual"}', 2, '{"spring","summer"}', 'Classic Tortoiseshell Sunglasses', 'Timeless tortoiseshell cat-eye sunglasses with UV400 protection. Stylish shades for beach days, outdoor brunches, and travel.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/pearl-necklace/600/400', 'accessory', 'necklace', '{"#FFFDD0","#F5F5F0"}', 'solid', 'pearl', '{"formal","wedding","festive","dinner","date"}', 4, '{"all-season"}', 'Classic Pearl Strand Necklace', 'Lustrous freshwater pearl strand necklace with a gold-plated clasp. A timeless piece that elevates sarees, dresses, and formal blouses.', true, NOW()),
+
+  (target_user_id, 'https://picsum.photos/seed/tan-tote/600/400', 'accessory', 'bag', '{"#D2B48C","#A0785A"}', 'solid', 'leather', '{"office","casual","travel","outdoor"}', 3, '{"all-season"}', 'Tan Leather Tote Bag', 'Structured tan leather tote with interior zip pocket and magnetic closure. A versatile everyday carry for office, travel, and weekend outings.', true, NOW());
+
+  RAISE NOTICE 'Successfully seeded 33 demo wardrobe items and accessories for user';
 
 END $$;
 
