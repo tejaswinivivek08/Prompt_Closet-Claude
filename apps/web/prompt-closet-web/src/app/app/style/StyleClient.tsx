@@ -320,6 +320,50 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
+function ItemSearchResults({
+  items,
+  message,
+}: {
+  items: OutfitItem[];
+  message: string;
+}) {
+  return (
+    <div>
+      <p className="text-sm mb-4 font-medium" style={{ color: "#7A6F68" }}>
+        {message}
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="rounded-xl overflow-hidden"
+            style={{
+              backgroundColor: "#F5F0EA",
+              border: "1px solid #E5DDD5",
+            }}
+          >
+            <div className="relative" style={{ paddingBottom: "100%" }}>
+              <img
+                src={item.image_url}
+                alt={item.suggested_name || item.category}
+                className="absolute inset-0 object-cover w-full h-full"
+              />
+            </div>
+            <div className="px-2 py-1.5">
+              <p
+                className="text-xs font-medium truncate"
+                style={{ color: "#2B2B2B" }}
+              >
+                {item.suggested_name || item.category}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function StyleClient({
   initialItems,
   userId,
@@ -330,6 +374,10 @@ export default function StyleClient({
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<OutfitSuggestion[]>([]);
+  const [searchItems, setSearchItems] = useState<{
+    items: OutfitItem[];
+    message: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -364,6 +412,7 @@ export default function StyleClient({
     setLoading(true);
     setError(null);
     setOutfits([]);
+    setSearchItems(null);
     setShowHistory(false);
 
     try {
@@ -379,6 +428,20 @@ export default function StyleClient({
         return;
       }
 
+      // Item search response (e.g. "show me all my black clothes")
+      if (data.response_type === "items" && Array.isArray(data.items)) {
+        if (data.items.length === 0) {
+          setError("I couldn't find any matching items in your wardrobe.");
+        } else {
+          setSearchItems({
+            items: data.items,
+            message: data.message || `Found ${data.items.length} items.`,
+          });
+        }
+        return;
+      }
+
+      // Outfit suggestions
       if (!data.outfits || data.outfits.length === 0) {
         setError("I couldn't find anything matching your request.");
         return;
@@ -583,6 +646,14 @@ export default function StyleClient({
       {/* Loading shimmer */}
       {loading && <ShimmerLoader />}
 
+      {/* Item search results (e.g. "show me all my black clothes") */}
+      {!loading && searchItems && (
+        <ItemSearchResults
+          items={searchItems.items}
+          message={searchItems.message}
+        />
+      )}
+
       {/* Outfit cards */}
       {!loading && outfits.length > 0 && (
         <div className="space-y-4">
@@ -597,8 +668,8 @@ export default function StyleClient({
         </div>
       )}
 
-      {/* No outfits found, no error, was a search */}
-      {!loading && outfits.length === 0 && query && !error && (
+      {/* No results found */}
+      {!loading && outfits.length === 0 && !searchItems && query && !error && (
         <EmptyState message="I couldn't find anything matching your request." />
       )}
 
