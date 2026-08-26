@@ -7,483 +7,316 @@ interface WardrobeItem {
   id: string;
   image_url: string;
   category: string;
+  subcategory?: string | null;
   colors: string[] | null;
   occasions: string[] | null;
   suggested_name: string | null;
-  formality_score: number | null;
   season: string[] | null;
+  pattern?: string | null;
+  fabric?: string | null;
   style_notes?: string | null;
 }
 
-// Occasion keyword mapping
+const SYSTEM_PROMPT = `You are the AI fashion intelligence engine and personal stylist for Prompt Closet, an AI-powered digital wardrobe.
+
+Core philosophy: "You already have the wardrobe. I'll help you see its possibilities."
+
+## Your Intelligence
+
+You understand every wardrobe item deeply: category, sub-category, colour, pattern, fabric, style, fit, silhouette, length, season suitability, occasion suitability, whether it is standalone or a layering piece, and how it combines with other items.
+
+Fashion logic you MUST follow:
+- A dress is a dress — do NOT suggest wearing trousers underneath it
+- A skirt should not be treated like trousers
+- A blazer can be used as a layering piece
+- Jewellery should complement, not overwhelm
+- Shoes and bags are part of the complete look
+- Never match items based only on category — evaluate colour theory, silhouette, proportion, occasion
+- Never create technically possible but visually ridiculous combinations
+
+## Query Types You Handle
+
+1. ITEM SEARCH — "Show me all my black clothes" / "What dresses do I have?" / "Show me my bags"
+   → Return response_type: "items" listing matching item IDs
+
+2. OUTFIT/OCCASION — "Style me for a dinner date" / "What to wear to a wedding?" / "Office outfit"
+   → Return response_type: "outfits" with 2–3 complete looks
+
+3. STYLE SEARCH — "Give me quiet luxury" / "Something classy" / "Make me look sophisticated"
+   → Return response_type: "outfits"
+
+4. WEATHER/CONTEXT — "It's raining" / "Singapore weather" / "Very hot today"
+   → Return response_type: "outfits" appropriate for weather
+
+5. CONSTRAINT — "No heels" / "Use this blazer" / "Haven't worn recently" / "No jeans today"
+   → Return response_type: "outfits" respecting constraints
+
+## Colour Theory
+
+Always evaluate: primary colour, contrast, complementary colours, tonal combinations, neutral balancing, warm/cool tones, prints vs solids.
+
+Example: a printed dress with black and gold → suggest black heels + gold earrings + black clutch. Briefly explain the colour logic in styling_tip.
+
+## Outfit Quality Rules
+
+For every outfit ask: Does the category make sense? Does silhouette work? Do proportions work? Do colours work? Is the occasion appropriate? Is it realistically wearable? Are accessories intentional?
+
+Generate complete looks with 2–5 items (clothing + shoes + bag + jewellery when available). Provide 2–3 different outfit options per query. Each look should feel intentional, not just random item combinations.
+
+## Response Format
+
+You MUST respond with ONLY a valid JSON object. No markdown, no explanation outside the JSON.
+
+For item searches:
+{
+  "response_type": "items",
+  "item_ids": ["id1", "id2", ...],
+  "message": "Here are all your black items — tap any to view details."
+}
+
+For outfit suggestions:
+{
+  "response_type": "outfits",
+  "outfits": [
+    {
+      "outfit_name": "Short evocative name",
+      "item_ids": ["id1", "id2", "id3"],
+      "occasion_fit": "dinner date",
+      "styling_tip": "1-2 sentence explanation of WHY this works — colour logic, proportion, occasion. Make it sound like a real stylist.",
+      "confidence": 0.85,
+      "weather_context": null
+    }
+  ]
+}
+
+Rules:
+- outfit_name: short, evocative (e.g. "The Gold Edit", "Power Brunch", "Quiet Luxury Monday")
+- item_ids: use ONLY IDs from the wardrobe provided — never invent IDs
+- confidence: 0.5–1.0 based on how well items match the query
+- weather_context: null or short string like "Light layers for Singapore heat"
+- styling_tip: always explain the colour or proportion logic briefly — this is what makes you a GREAT stylist, not just a filter
+- For item searches, item_ids should list all matching items
+- If the wardrobe has no items that work for the query, explain honestly in the message field`;
+
+async function callClaude(
+  query: string,
+  items: WardrobeItem[],
+): Promise<any | null> {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) return null;
+
+  // Build compact wardrobe catalog for Claude
+  const catalog = items
+    .map((i) => {
+      const parts = [
+        `ID:${i.id}`,
+        `Name:${i.suggested_name || i.category}`,
+        `Cat:${i.category}${i.subcategory ? `/${i.subcategory}` : ""}`,
+        `Colors:${(i.colors || []).join(",")}`,
+        `Occasions:${(i.occasions || []).join(",")}`,
+        `Season:${(i.season || []).join(",")}`,
+        i.pattern ? `Pattern:${i.pattern}` : "",
+        i.fabric ? `Fabric:${i.fabric}` : "",
+        i.style_notes ? `Notes:${i.style_notes.slice(0, 80)}` : "",
+      ]
+        .filter(Boolean)
+        .join(" | ");
+      return parts;
+    })
+    .join("\n");
+
+  const userMessage = `User query: "${query}"
+
+My wardrobe (${items.length} items):
+${catalog}
+
+Respond with ONLY the JSON object. Use only IDs from the wardrobe above.`;
+
+  try {
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1500,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userMessage }],
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("Claude API error:", res.status, await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    const text = data.content?.[0]?.text;
+    if (!text) return null;
+
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+
+    return JSON.parse(match[0]);
+  } catch (err) {
+    console.error("Claude call failed:", err);
+    return null;
+  }
+}
+
+// ── Keyword fallback ────────────────────────────────────────────────────────
+
 const OCCASION_KEYWORDS: Record<string, string[]> = {
-  casual: ["casual", "relaxed", "everyday", "home", "lounge"],
-  office: ["office", "work", "professional", "formal office", "corporate"],
-  festive: [
-    "festive",
-    "celebration",
-    "party",
-    "diwali",
-    "holi",
-    "christmas",
-    "eid",
-  ],
-  wedding: ["wedding", "marriage", "reception", "ceremony", "bride", "groom"],
-  party: ["party", "nightout", "club", "evening", "celebration"],
+  casual: ["casual", "relaxed", "everyday", "home", "lounge", "weekend"],
+  office: ["office", "work", "professional", "corporate", "meeting", "mba"],
+  festive: ["festive", "diwali", "holi", "christmas", "eid", "celebration"],
+  wedding: ["wedding", "marriage", "reception", "ceremony"],
+  party: ["party", "nightout", "club", "evening", "birthday"],
   temple: ["temple", "religious", "puja", "spiritual"],
-  beach: ["beach", "vacation", "swim", "summer"],
-  date: ["date", "romantic", "dinner", "valentine"],
+  beach: ["beach", "vacation", "swim", "summer holiday"],
+  date: ["date", "romantic", "dinner date", "valentine"],
   sport: ["sport", "gym", "workout", "fitness", "yoga"],
+  travel: ["travel", "airport", "trip", "holiday"],
+  brunch: ["brunch", "lunch", "sunday brunch"],
+  dinner: ["dinner", "fine dining", "restaurant"],
 };
 
-// Season keyword mapping
-const SEASON_KEYWORDS: Record<string, string[]> = {
-  summer: ["summer", "hot", "humid", "sweat", "light"],
-  winter: ["winter", "cold", "warm", "sweater", "jacket"],
-  monsoon: ["monsoon", "rain", "wet", "umbrella"],
-};
-
-// Formality keywords
-const FORMALITY_HIGH = [
-  "formal",
-  "office",
-  "professional",
-  "diplomatic",
-  "interview",
-];
-const FORMALITY_MID = ["smart", "semiformal", "date", "party"];
-const FORMALITY_LOW = ["casual", "relaxed", "lounge", "beach"];
-
-// Color keyword mapping
 const COLOR_KEYWORDS: Record<string, string[]> = {
-  red: ["red", "maroon", "crimson", "scarlet"],
+  red: ["red", "maroon", "crimson"],
   blue: ["blue", "navy", "indigo", "denim"],
-  green: ["green", "olive", "emerald", "sage"],
-  yellow: ["yellow", "gold", "mustard", "ochre"],
-  pink: ["pink", "rose", "magenta", "fuscia"],
-  purple: ["purple", "violet", "lavender", "plum"],
-  orange: ["orange", "peach", "coral", "apricot"],
-  white: ["white", "cream", "ivory", "off-white"],
-  black: ["black", "charcoal", "dark"],
-  brown: ["brown", "tan", "beige", "caramel", "chocolate"],
+  green: ["green", "olive", "emerald"],
+  yellow: ["yellow", "gold", "mustard"],
+  pink: ["pink", "rose", "blush"],
+  purple: ["purple", "violet", "lavender"],
+  orange: ["orange", "peach", "coral", "rust"],
+  white: ["white", "cream", "ivory"],
+  black: ["black", "charcoal"],
+  brown: ["brown", "tan", "beige", "caramel"],
+  grey: ["grey", "gray", "slate"],
 };
 
-// Demo look detection — special "Full Black Look" for investor demo
-const DEMO_LOOK_KEYWORDS = [
-  "full black",
-  "all black",
-  "black look",
-  "black outfit",
-  "monochrome",
-  "all black outfit",
-  "full black outfit",
-];
-
-// Festive occasion keywords for demo fallback
-const FESTIVE_KEYWORDS = [
-  "diwali",
-  "festive",
-  "eid",
-  "holi",
-  "traditional",
-  "indian wear",
-  "ethnic wear",
-];
-
-function isDemoLookQuery(query: string): boolean {
+function keywordFallback(
+  query: string,
+  items: WardrobeItem[],
+): { type: "items" | "outfits"; items?: WardrobeItem[]; outfits?: any[] } {
   const q = query.toLowerCase();
-  return DEMO_LOOK_KEYWORDS.some((kw) => q.includes(kw));
-}
 
-function isFestiveQuery(query: string): boolean {
-  const q = query.toLowerCase();
-  return FESTIVE_KEYWORDS.some((kw) => q.includes(kw));
-}
+  // Item search: "show me all my X clothes/items/dresses"
+  const isItemSearch =
+    /show me|what.*have|all my|display|list/.test(q) &&
+    !/outfit|style me|what (should|can) i wear/.test(q);
 
-interface ParsedQuery {
-  occasions: string[];
-  colors: string[];
-  seasons: string[];
-  formality: "high" | "mid" | "low" | null;
-  searchTerms: string[];
-}
-
-/**
- * Parse user query to extract structured filters
- */
-function parseQuery(query: string): ParsedQuery {
-  const q = query.toLowerCase();
-  const words = q.split(/\s+/);
-
-  const occasions: string[] = [];
-  const colors: string[] = [];
-  const seasons: string[] = [];
-  let formality: "high" | "mid" | "low" | null = null;
-  const searchTerms: string[] = [];
-
-  // Match occasion keywords
-  for (const [occasion, keywords] of Object.entries(OCCASION_KEYWORDS)) {
-    if (keywords.some((kw) => q.includes(kw))) {
-      occasions.push(occasion);
+  if (isItemSearch) {
+    // Color filter
+    for (const [color, kws] of Object.entries(COLOR_KEYWORDS)) {
+      if (kws.some((kw) => q.includes(kw))) {
+        const colorItems = items.filter((i) =>
+          (i.colors || []).some(
+            (c) =>
+              c.toLowerCase().includes(color) ||
+              kws.some((kw) => c.toLowerCase().includes(kw)),
+          ),
+        );
+        if (colorItems.length > 0) return { type: "items", items: colorItems };
+      }
     }
-  }
-
-  // Match season keywords
-  for (const [season, keywords] of Object.entries(SEASON_KEYWORDS)) {
-    if (keywords.some((kw) => q.includes(kw))) {
-      seasons.push(season);
+    // Category filter
+    const catMap: Record<string, string[]> = {
+      dress: ["dress"],
+      top: ["top", "shirt", "blouse", "kurti", "kurta"],
+      bottom: ["bottom", "jeans", "trouser", "skirt", "pant"],
+      bag: ["bag", "accessory"],
+      watch: ["watch"],
+      shoes: ["footwear", "shoes"],
+      accessory: ["accessory", "jewellery", "earring", "ring", "necklace"],
+    };
+    for (const [label, cats] of Object.entries(catMap)) {
+      if (q.includes(label) || cats.some((c) => q.includes(c))) {
+        const catItems = items.filter((i) =>
+          cats.some(
+            (c) =>
+              i.category.toLowerCase().includes(c) ||
+              (i.subcategory || "").toLowerCase().includes(c),
+          ),
+        );
+        if (catItems.length > 0) return { type: "items", items: catItems };
+      }
     }
+    return { type: "items", items: items.slice(0, 12) };
   }
 
-  // Match color keywords
-  for (const [color, keywords] of Object.entries(COLOR_KEYWORDS)) {
-    if (keywords.some((kw) => q.includes(kw))) {
-      colors.push(color);
-    }
+  // Outfit search: match by occasion
+  const matchedOccasions: string[] = [];
+  for (const [occ, kws] of Object.entries(OCCASION_KEYWORDS)) {
+    if (kws.some((kw) => q.includes(kw))) matchedOccasions.push(occ);
   }
 
-  // Match formality level
-  if (FORMALITY_HIGH.some((kw) => q.includes(kw))) {
-    formality = "high";
-  } else if (FORMALITY_MID.some((kw) => q.includes(kw))) {
-    formality = "mid";
-  } else if (FORMALITY_LOW.some((kw) => q.includes(kw))) {
-    formality = "low";
-  }
-
-  // Add remaining significant words as search terms
-  const skipWords = [
-    ...Object.values(OCCASION_KEYWORDS).flat(),
-    ...Object.values(SEASON_KEYWORDS).flat(),
-    ...Object.values(COLOR_KEYWORDS).flat(),
-    ...FORMALITY_HIGH,
-    ...FORMALITY_MID,
-    ...FORMALITY_LOW,
-  ];
-  for (const word of words) {
+  const scoredItems = items.map((item) => {
+    let score = 0;
     if (
-      word.length > 2 &&
-      !skipWords.includes(word) &&
-      ![
-        "outfit",
-        "wear",
-        "dress",
-        "clothes",
-        "matching",
-        "suggest",
-        "show",
-        "find",
-        "get",
-        "me",
-        "for",
-        "the",
-        "a",
-        "an",
-        "with",
-        "and",
-        "combo",
-        "look",
-      ].includes(word)
-    ) {
-      searchTerms.push(word);
-    }
-  }
-
-  return { occasions, colors, seasons, formality, searchTerms };
-}
-
-/**
- * Score item relevance to query
- */
-function scoreItem(item: WardrobeItem, parsed: ParsedQuery): number {
-  let score = 0;
-
-  // Occasion match (highest weight)
-  if (parsed.occasions.length > 0 && item.occasions) {
-    const occasionMatch = item.occasions.some((o) =>
-      parsed.occasions.includes(o.toLowerCase()),
-    );
-    if (occasionMatch) score += 10;
-  }
-
-  // Season match
-  if (parsed.seasons.length > 0 && item.season) {
-    const seasonMatch = item.season.some((s) =>
-      parsed.seasons.includes(s.toLowerCase()),
-    );
-    if (seasonMatch) score += 5;
-  }
-
-  // Color match
-  if (parsed.colors.length > 0 && item.colors) {
-    const colorMatch = item.colors.some((c) =>
-      parsed.colors.includes(c.toLowerCase()),
-    );
-    if (colorMatch) score += 8;
-  }
-
-  // Formality match
-  if (parsed.formality && item.formality_score) {
-    const itemFormality = item.formality_score;
-    if (parsed.formality === "high" && itemFormality >= 4) score += 6;
-    else if (
-      parsed.formality === "mid" &&
-      itemFormality >= 2 &&
-      itemFormality <= 4
+      matchedOccasions.length > 0 &&
+      (item.occasions || []).some((o) =>
+        matchedOccasions.includes(o.toLowerCase()),
+      )
     )
-      score += 6;
-    else if (parsed.formality === "low" && itemFormality <= 3) score += 6;
-  }
+      score += 10;
+    return { item, score };
+  });
 
-  // Search term match
-  for (const term of parsed.searchTerms) {
-    const itemText =
-      `${item.category} ${item.suggested_name || ""} ${(item.occasions || []).join(" ")} ${(item.colors || []).join(" ")}`.toLowerCase();
-    if (itemText.includes(term)) score += 2;
-  }
+  const pool = scoredItems
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20)
+    .map((s) => s.item);
 
-  return score;
-}
-
-/**
- * Build outfit combinations from items
- * Returns top + bottom + optional accessory combinations
- */
-function buildOutfits(items: WardrobeItem[], parsed: ParsedQuery): any[] {
-  const tops = items.filter((i) =>
+  const tops = pool.filter((i) =>
     ["top", "dress", "outerwear", "traditional"].includes(
       i.category.toLowerCase(),
     ),
   );
-  const bottoms = items.filter((i) =>
-    ["bottom"].includes(i.category.toLowerCase()),
-  );
-  const accessories = items.filter((i) =>
+  const bottoms = pool.filter((i) => i.category.toLowerCase() === "bottom");
+  const dresses = pool.filter((i) => i.category.toLowerCase() === "dress");
+  const accessories = pool.filter((i) =>
     ["accessory", "footwear"].includes(i.category.toLowerCase()),
   );
 
   const outfits: any[] = [];
 
-  // Build outfits with top + bottom
-  for (const top of tops.slice(0, 5)) {
-    for (const bottom of bottoms.slice(0, 5)) {
-      // Check color compatibility (simple complementary check)
-      const outfit = {
-        item_ids: [top.id, bottom.id],
-        occasion_fit: parsed.occasions[0] || top.occasions?.[0] || "casual",
-        outfit_name: `${top.suggested_name || top.category} + ${bottom.suggested_name || bottom.category}`,
-      };
-      outfits.push(outfit);
+  // Dress-only looks
+  for (const d of dresses.slice(0, 2)) {
+    const acc = accessories[outfits.length] || null;
+    outfits.push({
+      outfit_name: d.suggested_name || "Dress Look",
+      item_ids: acc ? [d.id, acc.id] : [d.id],
+      occasion_fit: matchedOccasions[0] || d.occasions?.[0] || "casual",
+      styling_tip: `The ${d.suggested_name || "dress"} works beautifully on its own. ${acc ? `The ${acc.suggested_name || "accessory"} adds a finishing touch.` : "Complete with heels or flats depending on the vibe."}`,
+      confidence: 0.78,
+      weather_context: null,
+    });
+  }
+
+  // Top + bottom combos
+  for (const top of tops.slice(0, 2)) {
+    for (const bottom of bottoms.slice(0, 1)) {
+      const acc = accessories[outfits.length] || null;
+      outfits.push({
+        outfit_name: `${top.suggested_name?.split(" ").slice(0, 2).join(" ") || "Top"} & ${bottom.suggested_name?.split(" ").slice(0, 2).join(" ") || "Bottom"}`,
+        item_ids: acc ? [top.id, bottom.id, acc.id] : [top.id, bottom.id],
+        occasion_fit: matchedOccasions[0] || top.occasions?.[0] || "casual",
+        styling_tip: `A balanced look pairing the ${top.suggested_name || top.category} with the ${bottom.suggested_name || bottom.category}. ${acc ? `The ${acc.suggested_name || "accessory"} ties the look together.` : "Add your favourite shoes to complete it."}`,
+        confidence: 0.72,
+        weather_context: null,
+      });
+      if (outfits.length >= 3) break;
     }
+    if (outfits.length >= 3) break;
   }
 
-  // Add dress-only outfits
-  const dresses = items.filter((i) => i.category.toLowerCase() === "dress");
-  for (const dress of dresses.slice(0, 5)) {
-    outfits.push({
-      item_ids: [dress.id],
-      occasion_fit: parsed.occasions[0] || dress.occasions?.[0] || "casual",
-      outfit_name: dress.suggested_name || dress.category,
-    });
-  }
-
-  // Add accessory combos
-  for (const acc of accessories.slice(0, 3)) {
-    if (outfits.length > 0) {
-      outfits[0].item_ids.push(acc.id);
-      outfits[0].outfit_name += ` + ${acc.suggested_name || acc.category}`;
-    }
-  }
-
-  // Return top 6 outfits
-  return outfits.slice(0, 6);
+  return { type: "outfits", outfits: outfits.slice(0, 3) };
 }
 
-/**
- * Build all-black outfit for demo query
- */
-function buildBlackLookOutfit(items: WardrobeItem[]): any[] {
-  // Find black tops and black bottoms
-  const blackTops = items.filter((i) => {
-    if (
-      !["top", "shirt", "blouse", "tshirt"].includes(i.category.toLowerCase())
-    )
-      return false;
-    const colors = (i.colors || []).map((c) => c.toLowerCase());
-    return colors.some(
-      (c) =>
-        c.includes("black") || c.includes("#000000") || c.includes("charcoal"),
-    );
-  });
-
-  const blackBottoms = items.filter((i) => {
-    if (
-      !["bottom", "trousers", "pants", "jeans"].includes(
-        i.category.toLowerCase(),
-      )
-    )
-      return false;
-    const colors = (i.colors || []).map((c) => c.toLowerCase());
-    return colors.some(
-      (c) =>
-        c.includes("black") || c.includes("#000000") || c.includes("charcoal"),
-    );
-  });
-
-  const blackAccessories = items.filter((i) => {
-    const colors = (i.colors || []).map((c) => c.toLowerCase());
-    return (
-      ["accessory", "footwear"].includes(i.category.toLowerCase()) &&
-      colors.some(
-        (c) =>
-          c.includes("black") ||
-          c.includes("#000000") ||
-          c.includes("charcoal"),
-      )
-    );
-  });
-
-  // Try to build a black top + black bottom combo
-  if (blackTops.length > 0 && blackBottoms.length > 0) {
-    const outfit: any = {
-      item_ids: [blackTops[0].id, blackBottoms[0].id],
-      occasion_fit: "party",
-      outfit_name: "The All-Black Edit",
-      styling_tip:
-        "A monochrome black look — sleek, powerful, and effortlessly chic. Perfect for evening events or making a bold statement.",
-      confidence: 0.98,
-      occasion_fit_display: "Evening · Party · Date",
-    };
-
-    // Add a black accessory if available
-    if (blackAccessories.length > 0) {
-      outfit.item_ids.push(blackAccessories[0].id);
-      outfit.outfit_name = "The All-Black Edit + Accessory";
-    }
-
-    return [outfit];
-  }
-
-  // Fallback: any black items
-  const allBlack = items.filter((i) => {
-    const colors = (i.colors || []).map((c) => c.toLowerCase());
-    return colors.some(
-      (c) =>
-        c.includes("black") || c.includes("#000000") || c.includes("charcoal"),
-    );
-  });
-
-  if (allBlack.length > 0) {
-    return [
-      {
-        item_ids: allBlack.slice(0, 3).map((i) => i.id),
-        occasion_fit: "party",
-        outfit_name: "The All-Black Edit",
-        styling_tip:
-          "A monochrome black look — sleek, powerful, and effortlessly chic. Perfect for evening events or making a bold statement.",
-        confidence: 0.85,
-        occasion_fit_display: "Evening · Party · Date",
-      },
-    ];
-  }
-
-  return [];
-}
-
-/**
- * Build festive demo outfits for Indian occasions - investor demo fallback
- */
-function buildFestiveDemoOutfits(items: WardrobeItem[]): any[] {
-  // Find any tops and bottoms to build outfits
-  const tops = items.filter((i) =>
-    ["top", "dress", "outerwear", "traditional"].includes(
-      i.category.toLowerCase(),
-    ),
-  );
-  const bottoms = items.filter((i) =>
-    ["bottom"].includes(i.category.toLowerCase()),
-  );
-
-  if (tops.length === 0 && bottoms.length === 0 && items.length === 0) {
-    return [];
-  }
-
-  const outfits: any[] = [];
-
-  // Build festive outfit from any available items
-  if (tops.length > 0 && bottoms.length > 0) {
-    outfits.push({
-      item_ids: [tops[0].id, bottoms[0].id],
-      occasion_fit: "festive",
-      outfit_name: "Festive Traditional Look",
-      styling_tip:
-        "A beautiful festive ensemble combining traditional elegance with modern style. Perfect for Diwali celebrations and festive gatherings.",
-      confidence: 0.88,
-      weather_context: "Light layers for air-conditioned venues",
-    });
-  } else if (tops.length > 0) {
-    outfits.push({
-      item_ids: [tops[0].id],
-      occasion_fit: "festive",
-      outfit_name: "Festive Top",
-      styling_tip:
-        "Style this festive top with traditional bottoms or a saree for a complete Diwali look. Add some gold jewelry to complete the celebration!",
-      confidence: 0.85,
-    });
-  }
-
-  // Add a saree-inspired look if we have enough items
-  const traditionalItems = items.filter((i) =>
-    ["traditional", "dress"].includes(i.category.toLowerCase()),
-  );
-  if (traditionalItems.length > 0) {
-    outfits.push({
-      item_ids: traditionalItems.slice(0, 1).map((i) => i.id),
-      occasion_fit: "festive",
-      outfit_name: "Traditional Elegance",
-      styling_tip:
-        "A stunning traditional piece perfect for Diwali puja and celebrations. Pair with traditional jewelry for the full festive experience.",
-      confidence: 0.92,
-    });
-  }
-
-  return outfits.slice(0, 3);
-}
-
-/**
- * Generate styling tip based on outfit and query
- */
-function generateStylingTip(
-  outfit: any,
-  items: WardrobeItem[],
-  parsed: ParsedQuery,
-): string {
-  const outfitItems = items.filter((i) => outfit.item_ids.includes(i.id));
-  const mainItem = outfitItems[0];
-  const occasion = parsed.occasions[0] || outfit.occasion_fit || "casual";
-
-  if (outfitItems.length === 1) {
-    return `This ${mainItem?.category || "piece"} is perfect for ${occasion}. ${mainItem?.style_notes || "Style it with matching accessories."}`;
-  }
-
-  const itemNames = outfitItems
-    .map((i) => i.suggested_name || i.category)
-    .join(" and ");
-  const occasionTip =
-    occasion === "festive"
-      ? "Add traditional jewelry to elevate this look"
-      : occasion === "office"
-        ? "Pair with formal footwear for a polished look"
-        : occasion === "casual"
-          ? "Add sneakers or flats for a relaxed vibe"
-          : "Complete with matching accessories";
-
-  return `This ${itemNames} combination works great for ${occasion}. ${occasionTip}.`;
-}
-
-/**
- * Fetch all wardrobe items for user
- */
 async function getWardrobeItems(
   userId: string,
   supabase: any,
@@ -491,102 +324,19 @@ async function getWardrobeItems(
   const { data } = await supabase
     .from("wardrobe_items")
     .select(
-      "id, image_url, category, colors, occasions, suggested_name, formality_score, season",
+      "id, image_url, category, subcategory, colors, occasions, suggested_name, season, pattern, fabric, style_notes",
     )
     .eq("user_id", userId)
     .eq("is_active", true);
   return data || [];
 }
 
-/**
- * Try to enhance outfit explanations with LLM
- */
-async function enhanceWithLLM(
-  outfits: any[],
-  items: WardrobeItem[],
-  query: string,
-): Promise<any[]> {
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  const miniMaxKey = process.env.MINIMAX_API_KEY;
-
-  // Check if we have a working LLM
-  if (!anthropicKey && !miniMaxKey) {
-    return outfits.map((o) => ({
-      ...o,
-      styling_tip: o.styling_tip || "A great outfit combination for you!",
-      confidence: 0.7,
-      weather_context: null,
-      enhanced: false,
-    }));
-  }
-
-  // Try Claude if available
-  if (anthropicKey) {
-    try {
-      const itemList = items
-        .map(
-          (i) => `${i.id}: ${i.suggested_name || i.category} (${i.category})`,
-        )
-        .join(", ");
-      const res = await fetch(ANTHROPIC_API_URL, {
-        method: "POST",
-        headers: {
-          "x-api-key": anthropicKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 500,
-          system: `You are Prompt Closet's AI stylist. Return ONLY a JSON array of tips, one per outfit. Schema: { "styling_tip": string (1-2 sentences), "confidence": number (0.5-1.0) }`,
-          messages: [
-            {
-              role: "user",
-              content: `Query: ${query}\n\nOutfit indices (0-${outfits.length - 1}):\n${outfits.map((o, i) => `${i}: ${o.outfit_name}`).join("\n")}\n\nReturn JSON array of ${outfits.length} tips.`,
-            },
-          ],
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.content?.[0]?.text;
-        if (content) {
-          const match = content.match(/\[[\s\S]*?\]/);
-          if (match) {
-            const tips = JSON.parse(match[0]);
-            return outfits.map((o, i) => ({
-              ...o,
-              styling_tip: tips[i]?.styling_tip || o.styling_tip,
-              confidence: tips[i]?.confidence || 0.8,
-              weather_context: null,
-              enhanced: true,
-            }));
-          }
-        }
-      }
-    } catch (err) {
-      console.log("Claude enhancement failed:", err);
-    }
-  }
-
-  // Return with basic tips if LLM failed
-  return outfits.map((o) => ({
-    ...o,
-    styling_tip: o.styling_tip || "A great outfit combination for you!",
-    confidence: 0.7,
-    weather_context: null,
-    enhanced: false,
-  }));
-}
-
 export async function POST(request: Request) {
   const { query, userId } = await request.json();
 
-  if (!query || !query.trim()) {
+  if (!query?.trim()) {
     return NextResponse.json({ error: "Query is required." }, { status: 400 });
   }
-
   if (!userId) {
     return NextResponse.json(
       { error: "User ID is required." },
@@ -596,173 +346,131 @@ export async function POST(request: Request) {
 
   try {
     const supabase = await createClient();
-
-    // Fetch all wardrobe items
     const items = await getWardrobeItems(userId, supabase);
 
     if (items.length === 0) {
       return NextResponse.json({
         error:
-          "Your wardrobe is empty. Add some items first to get outfit suggestions!",
+          "Your wardrobe is empty. Add some items to your closet first, then ask me to style you!",
       });
     }
 
-    // Check for demo look query first
-    if (isDemoLookQuery(query)) {
-      const blackOutfits = buildBlackLookOutfit(items);
-      if (blackOutfits.length > 0) {
-        const outfitsWithPhotos = blackOutfits.map((outfit) => ({
-          ...outfit,
-          items: items
-            .filter((i) => outfit.item_ids.includes(i.id))
-            .map((i) => ({
-              id: i.id,
-              image_url: i.image_url,
-              suggested_name: i.suggested_name,
-              category: i.category,
-            })),
-        }));
+    // Try Claude first
+    const claudeResult = await callClaude(query, items);
+
+    if (claudeResult) {
+      if (claudeResult.response_type === "items") {
+        // Item search — return filtered items
+        const validIds = new Set(items.map((i) => i.id));
+        const matchedIds = (claudeResult.item_ids || []).filter((id: string) =>
+          validIds.has(id),
+        );
+        const matchedItems = matchedIds
+          .map((id: string) => items.find((i) => i.id === id))
+          .filter(Boolean);
 
         return NextResponse.json({
-          outfits: outfitsWithPhotos,
-          usingKeywordSearch: true,
-          isDemoLook: true,
-          parsed: {
-            occasions: [],
-            colors: ["black"],
-            seasons: [],
-            formality: null,
-          },
+          response_type: "items",
+          items: matchedItems.map((i: WardrobeItem) => ({
+            id: i.id,
+            image_url: i.image_url,
+            suggested_name: i.suggested_name,
+            category: i.category,
+            colors: i.colors,
+            occasions: i.occasions,
+          })),
+          message:
+            claudeResult.message || `Found ${matchedItems.length} items.`,
         });
       }
-    }
 
-    // Check for festive query with fallback for demo
-    if (isFestiveQuery(query)) {
-      const festiveOutfits = buildFestiveDemoOutfits(items);
-      if (festiveOutfits.length > 0) {
-        const outfitsWithPhotos = festiveOutfits.map((outfit) => ({
-          ...outfit,
-          items: items
-            .filter((i) => outfit.item_ids.includes(i.id))
-            .map((i) => ({
-              id: i.id,
-              image_url: i.image_url,
-              suggested_name: i.suggested_name,
-              category: i.category,
-            })),
-        }));
+      if (
+        claudeResult.response_type === "outfits" &&
+        Array.isArray(claudeResult.outfits) &&
+        claudeResult.outfits.length > 0
+      ) {
+        const validIds = new Set(items.map((i) => i.id));
+        const outfitsWithPhotos = claudeResult.outfits
+          .map((outfit: any) => {
+            const validItemIds = (outfit.item_ids || []).filter((id: string) =>
+              validIds.has(id),
+            );
+            if (validItemIds.length === 0) return null;
+            return {
+              id: crypto.randomUUID(),
+              outfit_name: outfit.outfit_name || "Styled Look",
+              item_ids: validItemIds,
+              occasion_fit: outfit.occasion_fit || "casual",
+              styling_tip:
+                outfit.styling_tip || "A great combination from your wardrobe.",
+              confidence: outfit.confidence || 0.8,
+              weather_context: outfit.weather_context || null,
+              items: validItemIds.map((id: string) => {
+                const item = items.find((i) => i.id === id)!;
+                return {
+                  id: item.id,
+                  image_url: item.image_url,
+                  suggested_name: item.suggested_name,
+                  category: item.category,
+                };
+              }),
+            };
+          })
+          .filter(Boolean);
 
-        return NextResponse.json({
-          outfits: outfitsWithPhotos,
-          usingKeywordSearch: true,
-          isFestiveDemo: true,
-          parsed: {
-            occasions: ["festive"],
-            colors: [],
-            seasons: [],
-            formality: "mid",
-          },
-        });
-      }
-    }
-
-    // Parse the query
-    const parsed = parseQuery(query);
-
-    // Score and filter items
-    const scoredItems = items.map((item) => ({
-      item,
-      score: scoreItem(item, parsed),
-    }));
-
-    // Sort by score and take top matches
-    const matchedItems = scoredItems
-      .filter((s) => s.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 30)
-      .map((s) => s.item);
-
-    // If no keyword matches, use all items (broad search)
-    const itemsToUse =
-      matchedItems.length > 0 ? matchedItems : items.slice(0, 20);
-
-    // Build outfit combinations
-    let outfits = buildOutfits(itemsToUse, parsed);
-
-    // If still no outfits, try pairing any top with any bottom
-    if (outfits.length === 0) {
-      const anyTops = items
-        .filter((i) =>
-          ["top", "dress", "traditional", "outerwear"].includes(
-            i.category.toLowerCase(),
-          ),
-        )
-        .slice(0, 3);
-      const anyBottoms = items
-        .filter((i) => i.category.toLowerCase() === "bottom")
-        .slice(0, 3);
-
-      for (const top of anyTops) {
-        for (const bottom of anyBottoms) {
-          outfits.push({
-            item_ids: [top.id, bottom.id],
-            occasion_fit: parsed.occasions[0] || "casual",
-            outfit_name: `${top.suggested_name || top.category} + ${bottom.suggested_name || bottom.category}`,
-          });
+        if (outfitsWithPhotos.length > 0) {
+          return NextResponse.json({ outfits: outfitsWithPhotos });
         }
       }
     }
 
-    // If STILL no outfits, just return single items as "looks"
-    if (outfits.length === 0) {
-      for (const item of items.slice(0, 6)) {
-        outfits.push({
-          item_ids: [item.id],
-          occasion_fit: item.occasions?.[0] || "casual",
-          outfit_name: item.suggested_name || item.category,
-        });
-      }
-    }
+    // Fallback to keyword search
+    const fallback = keywordFallback(query, items);
 
-    // Generate styling tips
-    const outfitsWithTips = outfits.map((o) => ({
-      ...o,
-      styling_tip: generateStylingTip(o, items, parsed),
-      confidence: 0.75,
-      weather_context: null,
-    }));
-
-    // Try to enhance with LLM (best effort)
-    const enhancedOutfits = await enhanceWithLLM(outfitsWithTips, items, query);
-
-    // Attach full item data for photos
-    const outfitsWithPhotos = enhancedOutfits.map((outfit) => ({
-      ...outfit,
-      items: items
-        .filter((i) => outfit.item_ids.includes(i.id))
-        .map((i) => ({
+    if (fallback.type === "items") {
+      return NextResponse.json({
+        response_type: "items",
+        items: (fallback.items || []).map((i) => ({
           id: i.id,
           image_url: i.image_url,
           suggested_name: i.suggested_name,
           category: i.category,
+          colors: i.colors,
+          occasions: i.occasions,
         })),
+        message: `Showing matching items from your wardrobe.`,
+      });
+    }
+
+    const outfits = fallback.outfits || [];
+    if (outfits.length === 0) {
+      return NextResponse.json({
+        error:
+          "I couldn't find a great match for that. Try rephrasing or add more items to your wardrobe.",
+      });
+    }
+
+    const outfitsWithPhotos = outfits.map((o: any) => ({
+      id: crypto.randomUUID(),
+      ...o,
+      items: (o.item_ids || [])
+        .map((id: string) => {
+          const item = items.find((i) => i.id === id);
+          return item
+            ? {
+                id: item.id,
+                image_url: item.image_url,
+                suggested_name: item.suggested_name,
+                category: item.category,
+              }
+            : null;
+        })
+        .filter(Boolean),
     }));
 
-    return NextResponse.json({
-      outfits: outfitsWithPhotos,
-      usingKeywordSearch: true,
-      parsed: {
-        occasions: parsed.occasions,
-        colors: parsed.colors,
-        seasons: parsed.seasons,
-        formality: parsed.formality,
-      },
-    });
+    return NextResponse.json({ outfits: outfitsWithPhotos });
   } catch (err) {
     console.error("Magic bar error:", err);
-    return NextResponse.json({
-      error: "Something went wrong. Try again.",
-    });
+    return NextResponse.json({ error: "Something went wrong. Try again." });
   }
 }
