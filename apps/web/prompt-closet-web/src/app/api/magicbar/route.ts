@@ -103,7 +103,15 @@ async function callClaude(
   items: WardrobeItem[],
 ): Promise<any | null> {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (!anthropicKey) return null;
+  if (!anthropicKey) {
+    console.log(
+      "[magicbar] ANTHROPIC_API_KEY not set — using keyword fallback",
+    );
+    return null;
+  }
+  console.log(
+    `[magicbar] Calling Claude with ${items.length} wardrobe items for query: "${query}"`,
+  );
 
   // Build compact wardrobe catalog for Claude
   const catalog = items
@@ -149,20 +157,36 @@ Respond with ONLY the JSON object. Use only IDs from the wardrobe above.`;
     });
 
     if (!res.ok) {
-      console.error("Claude API error:", res.status, await res.text());
+      const body = await res.text();
+      console.error(
+        `[magicbar] Claude API error: status=${res.status} body=${body}`,
+      );
       return null;
     }
 
     const data = await res.json();
     const text = data.content?.[0]?.text;
-    if (!text) return null;
+    if (!text) {
+      console.error("[magicbar] Claude returned empty content");
+      return null;
+    }
 
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
+    if (!match) {
+      console.error(
+        "[magicbar] Claude response had no JSON object:",
+        text.slice(0, 200),
+      );
+      return null;
+    }
 
-    return JSON.parse(match[0]);
+    const parsed = JSON.parse(match[0]);
+    console.log(
+      `[magicbar] Claude responded: response_type=${parsed.response_type} outfits=${parsed.outfits?.length ?? 0} items=${parsed.item_ids?.length ?? 0}`,
+    );
+    return parsed;
   } catch (err) {
-    console.error("Claude call failed:", err);
+    console.error("[magicbar] Claude call threw:", err);
     return null;
   }
 }
@@ -394,7 +418,6 @@ export async function POST(request: Request) {
 
     if (claudeResult) {
       if (claudeResult.response_type === "items") {
-        // Item search — return filtered items
         const validIds = new Set(items.map((i) => i.id));
         const matchedIds = (claudeResult.item_ids || []).filter((id: string) =>
           validIds.has(id),
@@ -403,8 +426,12 @@ export async function POST(request: Request) {
           .map((id: string) => items.find((i) => i.id === id))
           .filter(Boolean);
 
+        console.log(
+          `[magicbar] Claude item search: ${matchedItems.length} items matched`,
+        );
         return NextResponse.json({
           response_type: "items",
+          source: "claude",
           items: matchedItems.map((i: WardrobeItem) => ({
             id: i.id,
             image_url: i.image_url,
@@ -453,17 +480,25 @@ export async function POST(request: Request) {
           .filter(Boolean);
 
         if (outfitsWithPhotos.length > 0) {
-          return NextResponse.json({ outfits: outfitsWithPhotos });
+          console.log(
+            `[magicbar] Claude outfit suggestions: ${outfitsWithPhotos.length} outfits`,
+          );
+          return NextResponse.json({
+            outfits: outfitsWithPhotos,
+            source: "claude",
+          });
         }
       }
     }
 
     // Fallback to keyword search
+    console.log("[magicbar] Falling back to keyword search");
     const fallback = keywordFallback(query, items);
 
     if (fallback.type === "items") {
       return NextResponse.json({
         response_type: "items",
+        source: "fallback",
         items: (fallback.items || []).map((i) => ({
           id: i.id,
           image_url: i.image_url,
@@ -502,9 +537,12 @@ export async function POST(request: Request) {
         .filter(Boolean),
     }));
 
-    return NextResponse.json({ outfits: outfitsWithPhotos });
+    return NextResponse.json({
+      outfits: outfitsWithPhotos,
+      source: "fallback",
+    });
   } catch (err) {
-    console.error("Magic bar error:", err);
+    console.error("[magicbar] Unhandled error:", err);
     return NextResponse.json({ error: "Something went wrong. Try again." });
   }
 }
