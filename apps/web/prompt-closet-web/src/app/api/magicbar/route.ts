@@ -210,16 +210,39 @@ function keywordFallback(
     !/outfit|style me|what (should|can) i wear/.test(q);
 
   if (isItemSearch) {
-    // Color filter
+    // Color filter — check hex codes AND item name/notes (colors in DB are stored as hex)
+    const HEX_BY_COLOR: Record<string, string[]> = {
+      black: ["#000000", "#1c1c1c", "#0a0a0a", "#222"],
+      white: ["#ffffff", "#fff", "#fafafa", "#f5f5f5"],
+      red: ["#cc0000", "#ff0000", "#dc143c", "#b22222"],
+      blue: ["#0000ff", "#3b5998", "#000080", "#1e3a8a"],
+      green: ["#008000", "#2e7d32", "#228b22"],
+      yellow: ["#ffff00", "#ffd700", "#f5c518"],
+      pink: ["#ffb6c1", "#ff69b4", "#ffc0cb"],
+      purple: ["#800080", "#8b008b", "#dda0dd"],
+      orange: ["#b7410e", "#ff6347", "#ff8c00", "#ffa500"],
+      brown: ["#a52a2a", "#8b4513", "#d2691e"],
+      grey: ["#808080", "#708090", "#c0c0c0", "#a9a9a9"],
+      gold: ["#ffd700", "#c5a028", "#daa520"],
+      peach: ["#ffcba4", "#ffdbac", "#ffdab9"],
+    };
+
     for (const [color, kws] of Object.entries(COLOR_KEYWORDS)) {
       if (kws.some((kw) => q.includes(kw))) {
-        const colorItems = items.filter((i) =>
-          (i.colors || []).some(
-            (c) =>
-              c.toLowerCase().includes(color) ||
-              kws.some((kw) => c.toLowerCase().includes(kw)),
-          ),
-        );
+        const hexCodes = HEX_BY_COLOR[color] || [];
+        const colorItems = items.filter((i) => {
+          // Match by hex code
+          const hexMatch = (i.colors || []).some((c) =>
+            hexCodes.some((hex) => c.toLowerCase().startsWith(hex)),
+          );
+          // Match by item name or notes containing the color word
+          const nameMatch = kws.some(
+            (kw) =>
+              (i.suggested_name || "").toLowerCase().includes(kw) ||
+              (i.style_notes || "").toLowerCase().includes(kw),
+          );
+          return hexMatch || nameMatch;
+        });
         if (colorItems.length > 0) return { type: "items", items: colorItems };
       }
     }
@@ -266,21 +289,32 @@ function keywordFallback(
     return { item, score };
   });
 
-  const pool = scoredItems
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 20)
-    .map((s) => s.item);
+  const sorted = scoredItems.sort((a, b) => b.score - a.score);
+  // Only clothing items with a positive occasion score go into outfit pool.
+  // Accessories (bags, watches, jewellery) are always available as accents.
+  const matched = sorted.filter((s) => s.score > 0).map((s) => s.item);
+  const accessories = items.filter((i) =>
+    ["accessory", "footwear"].includes(i.category.toLowerCase()),
+  );
+  // If nothing matched the occasion, fall back to all clothing items
+  const pool =
+    matched.length >= 2
+      ? matched
+      : sorted
+          .filter(
+            (s) =>
+              !["accessory", "footwear"].includes(
+                s.item.category.toLowerCase(),
+              ),
+          )
+          .slice(0, 10)
+          .map((s) => s.item);
 
   const tops = pool.filter((i) =>
-    ["top", "dress", "outerwear", "traditional"].includes(
-      i.category.toLowerCase(),
-    ),
+    ["top", "outerwear", "traditional"].includes(i.category.toLowerCase()),
   );
   const bottoms = pool.filter((i) => i.category.toLowerCase() === "bottom");
   const dresses = pool.filter((i) => i.category.toLowerCase() === "dress");
-  const accessories = pool.filter((i) =>
-    ["accessory", "footwear"].includes(i.category.toLowerCase()),
-  );
 
   const outfits: any[] = [];
 
