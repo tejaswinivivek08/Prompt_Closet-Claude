@@ -9,24 +9,404 @@ import {
   Heart,
   Camera,
   X,
-  Check,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-const SKIN_TONE_COLORS = [
-  // Fair Cool
-  ["#FDDBB4", "#F5C9A8", "#E8B89D", "#E0A882", "#D4946A", "#C68050"],
-  // Fair Warm
-  ["#FFECD2", "#FFE0B8", "#F5D0A0", "#E8B88A", "#DCA070", "#C88858"],
-  // Medium Cool
-  ["#D4A574", "#C68E6A", "#B8785A", "#A0674A", "#8A563A", "#70442A"],
-  // Medium Warm
-  ["#C49A6C", "#B08458", "#9C6E44", "#885830", "#74421C", "#602C08"],
-  // Deep Cool
-  ["#8B5E3C", "#6B4423", "#5A3A1E", "#4A2C17", "#3A1E10", "#2A1008"],
-  // Deep Warm
-  ["#A0674A", "#8B4E32", "#763A1A", "#612600", "#4C1200", "#370000"],
+// --- Skin tone wheel data ---
+type Tone = { hex: string; name: string; undertone: string };
+
+const RING_TONES: Tone[][] = [
+  // Ring 0 – Very Fair (outermost, r=125)
+  [
+    { hex: "#FFE4E0", name: "Porcelain", undertone: "Cool" },
+    { hex: "#FEEAE4", name: "Snow", undertone: "Neutral-Cool" },
+    { hex: "#FDE8D4", name: "Ivory White", undertone: "Neutral" },
+    { hex: "#FDEACC", name: "Warm Ivory", undertone: "Neutral-Warm" },
+    { hex: "#FDE0B8", name: "Cream", undertone: "Warm" },
+    { hex: "#FDD8A0", name: "Pale Honey", undertone: "Golden" },
+    { hex: "#F8D8A8", name: "Vanilla Gold", undertone: "Golden-Olive" },
+    { hex: "#F0D8B0", name: "Pearl Olive", undertone: "Olive" },
+    { hex: "#F4D4B8", name: "Soft Olive", undertone: "Olive-Warm" },
+    { hex: "#FDDEC8", name: "Peach Cream", undertone: "Warm" },
+    { hex: "#FFDACC", name: "Blushed Cream", undertone: "Rosy-Warm" },
+    { hex: "#FFD8D8", name: "Rosy Fair", undertone: "Rosy" },
+    { hex: "#FFD8EC", name: "Rose Ivory", undertone: "Cool-Pink" },
+    { hex: "#FFE0F0", name: "Pale Rose", undertone: "Cool" },
+  ],
+  // Ring 1 – Fair to Light-Medium (r=97)
+  [
+    { hex: "#F0C0B4", name: "Fair Cool Beige", undertone: "Cool" },
+    { hex: "#ECC0A0", name: "Light Beige", undertone: "Neutral-Cool" },
+    { hex: "#E8B888", name: "Natural Beige", undertone: "Neutral" },
+    { hex: "#E4B070", name: "Warm Sand", undertone: "Warm" },
+    { hex: "#E0A858", name: "Golden Sand", undertone: "Golden" },
+    { hex: "#D8A860", name: "Sandy Gold", undertone: "Golden-Olive" },
+    { hex: "#D0A860", name: "Light Olive Sand", undertone: "Olive" },
+    { hex: "#D4B070", name: "Warm Olive Beige", undertone: "Olive-Warm" },
+    { hex: "#DCB888", name: "Peachy Beige", undertone: "Warm" },
+    { hex: "#E0B0A0", name: "Peach Beige", undertone: "Rosy-Warm" },
+    { hex: "#E0B0B0", name: "Rosy Beige", undertone: "Rosy" },
+    { hex: "#E8B8C0", name: "Pink Beige", undertone: "Cool-Pink" },
+    { hex: "#ECC0C8", name: "Rose Beige", undertone: "Cool" },
+    { hex: "#F0C4D0", name: "Cool Rose Beige", undertone: "Cool-Pink" },
+  ],
+  // Ring 2 – Medium (r=68)
+  [
+    { hex: "#C0907C", name: "Medium Cool", undertone: "Cool" },
+    { hex: "#BC8868", name: "Warm Medium", undertone: "Neutral" },
+    { hex: "#B87E58", name: "Warm Tan", undertone: "Warm" },
+    { hex: "#B07840", name: "Golden Tan", undertone: "Golden" },
+    { hex: "#A87848", name: "Olive Medium", undertone: "Olive" },
+    { hex: "#A87840", name: "Warm Caramel", undertone: "Warm-Golden" },
+    { hex: "#A07838", name: "Deep Caramel", undertone: "Golden" },
+    { hex: "#B08070", name: "Rosy Tan", undertone: "Rosy-Warm" },
+    { hex: "#B88888", name: "Dusty Rose Tan", undertone: "Rosy" },
+    { hex: "#C09090", name: "Cool Rose Tan", undertone: "Cool-Pink" },
+    { hex: "#C89898", name: "Mauve Tan", undertone: "Cool" },
+    { hex: "#D0A0A8", name: "Pink Tan", undertone: "Cool-Pink" },
+  ],
+  // Ring 3 – Tan to Brown (r=42)
+  [
+    { hex: "#906050", name: "Tan Cool", undertone: "Cool" },
+    { hex: "#886048", name: "Medium Brown", undertone: "Neutral" },
+    { hex: "#7C5438", name: "Warm Brown", undertone: "Warm" },
+    { hex: "#7A5230", name: "Golden Brown", undertone: "Golden" },
+    { hex: "#746050", name: "Olive Brown", undertone: "Olive" },
+    { hex: "#7C5038", name: "Copper Brown", undertone: "Red-Warm" },
+    { hex: "#886060", name: "Deep Rosy Brown", undertone: "Rosy" },
+    { hex: "#906870", name: "Cool Deep Tan", undertone: "Cool" },
+    { hex: "#997080", name: "Mauve Brown", undertone: "Cool-Pink" },
+    { hex: "#A07888", name: "Pink Deep Tan", undertone: "Cool" },
+  ],
+  // Ring 4 – Very Deep (innermost, r=18)
+  [
+    { hex: "#4E2E1C", name: "Rich Espresso", undertone: "Warm" },
+    { hex: "#3C2018", name: "Espresso", undertone: "Neutral" },
+    { hex: "#381C10", name: "Deep Cocoa", undertone: "Cool" },
+    { hex: "#342010", name: "Dark Espresso", undertone: "Warm" },
+    { hex: "#281408", name: "Rich Ebony", undertone: "Neutral" },
+    { hex: "#1E0E06", name: "Ebony", undertone: "Cool" },
+  ],
 ];
+
+const CANVAS_SIZE = 300;
+const CX = 150;
+const CY = 150;
+const RADII = [125, 97, 68, 42, 18];
+const DOT_SIZES = [11, 11, 11, 10, 9];
+
+function hexToRgb(hex: string) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function colorDistance(a: string, b: string) {
+  const { r: r1, g: g1, b: b1 } = hexToRgb(a);
+  const { r: r2, g: g2, b: b2 } = hexToRgb(b);
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+}
+
+const ALL_TONES = RING_TONES.flat();
+
+function SkinToneWheel({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (hex: string) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dotsRef = useRef<Array<{ x: number; y: number; tone: Tone }>>([]);
+  const [selectedTone, setSelectedTone] = useState<Tone | null>(() => {
+    if (!value) return null;
+    return (
+      ALL_TONES.find((t) => t.hex.toLowerCase() === value.toLowerCase()) ?? null
+    );
+  });
+  const [copied, setCopied] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const draw = (hoveredHex?: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Subtle background circle
+    ctx.beginPath();
+    ctx.arc(CX, CY, 142, 0, 2 * Math.PI);
+    ctx.fillStyle = "rgba(245,240,234,0.5)";
+    ctx.fill();
+
+    const dots: typeof dotsRef.current = [];
+    RING_TONES.forEach((ring, ri) => {
+      ring.forEach((tone, i) => {
+        const angle = (i / ring.length) * 2 * Math.PI - Math.PI / 2;
+        const x = CX + RADII[ri] * Math.cos(angle);
+        const y = CY + RADII[ri] * Math.sin(angle);
+        const dr = DOT_SIZES[ri];
+        dots.push({ x, y, tone });
+
+        const isSelected =
+          value && tone.hex.toLowerCase() === value.toLowerCase();
+        const isHovered = hoveredHex === tone.hex;
+
+        if (isSelected) {
+          ctx.shadowColor = "rgba(0,0,0,0.3)";
+          ctx.shadowBlur = 10;
+        }
+        ctx.beginPath();
+        ctx.arc(x, y, dr, 0, 2 * Math.PI);
+        ctx.fillStyle = tone.hex;
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(x, y, dr + 3, 0, 2 * Math.PI);
+          ctx.strokeStyle = "#2B2B2B";
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(x, y, dr + 1.5, 0, 2 * Math.PI);
+          ctx.strokeStyle = "#FFFFFF";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        } else if (isHovered) {
+          ctx.beginPath();
+          ctx.arc(x, y, dr + 2, 0, 2 * Math.PI);
+          ctx.strokeStyle = "rgba(43,43,43,0.45)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      });
+    });
+    dotsRef.current = dots;
+  };
+
+  useEffect(() => {
+    draw();
+  }, [value]); // eslint-disable-line
+
+  const getCanvasXY = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const sx = CANVAS_SIZE / rect.width;
+    const sy = CANVAS_SIZE / rect.height;
+    return {
+      mx: (e.clientX - rect.left) * sx,
+      my: (e.clientY - rect.top) * sy,
+    };
+  };
+
+  const hitTest = (mx: number, my: number) => {
+    let closest: (typeof dotsRef.current)[0] | null = null;
+    let minD = Infinity;
+    dotsRef.current.forEach((dot) => {
+      const d = Math.hypot(mx - dot.x, my - dot.y);
+      if (d < 14 && d < minD) {
+        minD = d;
+        closest = dot;
+      }
+    });
+    return closest;
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { mx, my } = getCanvasXY(e);
+    const hit = hitTest(mx, my);
+    if (hit) {
+      setSelectedTone(hit.tone);
+      onChange(hit.tone.hex);
+    }
+  };
+
+  const handleMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { mx, my } = getCanvasXY(e);
+    const hit = hitTest(mx, my);
+    draw(hit?.tone.hex);
+    if (canvasRef.current)
+      canvasRef.current.style.cursor = hit ? "pointer" : "default";
+  };
+
+  const handlePhotoMatch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const ctx2 = c.getContext("2d");
+      if (!ctx2) return;
+      ctx2.drawImage(img, 0, 0);
+      const cx2 = Math.floor(img.width / 2);
+      const cy2 = Math.floor(img.height / 2);
+      const d = ctx2.getImageData(cx2 - 10, cy2 - 10, 20, 20).data;
+      let r = 0,
+        g = 0,
+        b = 0,
+        count = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        r += d[i];
+        g += d[i + 1];
+        b += d[i + 2];
+        count++;
+      }
+      const avgHex = `#${Math.round(r / count)
+        .toString(16)
+        .padStart(2, "0")}${Math.round(g / count)
+        .toString(16)
+        .padStart(2, "0")}${Math.round(b / count)
+        .toString(16)
+        .padStart(2, "0")}`;
+      let best = ALL_TONES[0],
+        bestD = Infinity;
+      ALL_TONES.forEach((t) => {
+        const dist = colorDistance(avgHex, t.hex);
+        if (dist < bestD) {
+          bestD = dist;
+          best = t;
+        }
+      });
+      setSelectedTone(best);
+      onChange(best.hex);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+    e.target.value = "";
+  };
+
+  const rgb = selectedTone ? hexToRgb(selectedTone.hex) : null;
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-5 items-start">
+      <div className="flex-shrink-0">
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_SIZE}
+          height={CANVAS_SIZE}
+          style={{ width: 240, height: 240, display: "block" }}
+          onClick={handleClick}
+          onMouseMove={handleMove}
+          onMouseLeave={() => draw()}
+        />
+      </div>
+      <div className="flex-1 min-w-0 space-y-3">
+        {selectedTone && rgb ? (
+          <>
+            <div className="flex items-center gap-3">
+              <div
+                className="rounded-full flex-shrink-0"
+                style={{
+                  width: 52,
+                  height: 52,
+                  backgroundColor: selectedTone.hex,
+                  border: "3px solid #F0EBE6",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                }}
+              />
+              <div>
+                <p className="text-xs" style={{ color: "#7A6F68" }}>
+                  Your Skin Tone
+                </p>
+                <p className="font-bold text-base" style={{ color: "#2B2B2B" }}>
+                  {selectedTone.name}
+                </p>
+              </div>
+            </div>
+            <div
+              className="rounded-xl p-3 space-y-1.5 text-xs"
+              style={{ backgroundColor: "#F5F0EA" }}
+            >
+              <div className="flex justify-between">
+                <span style={{ color: "#7A6F68" }}>HEX</span>
+                <span
+                  className="font-mono font-semibold"
+                  style={{ color: "#2B2B2B" }}
+                >
+                  {selectedTone.hex.toUpperCase()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: "#7A6F68" }}>RGB</span>
+                <span
+                  className="font-mono font-semibold"
+                  style={{ color: "#2B2B2B" }}
+                >
+                  {rgb.r}, {rgb.g}, {rgb.b}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: "#7A6F68" }}>Undertone</span>
+                <span className="font-semibold" style={{ color: "#2B2B2B" }}>
+                  {selectedTone.undertone}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(selectedTone.hex.toUpperCase());
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="w-full py-2 rounded-xl text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: copied ? "#2B2B2B" : "#C9847A",
+                color: "#FFFFFF",
+              }}
+            >
+              {copied ? "✓ Copied!" : "Copy HEX Code"}
+            </button>
+          </>
+        ) : (
+          <div
+            className="rounded-2xl p-4 text-center"
+            style={{ backgroundColor: "#F5F0EA", border: "1px dashed #E5DDD5" }}
+          >
+            <p
+              className="text-sm font-medium mb-1"
+              style={{ color: "#2B2B2B" }}
+            >
+              Select your skin tone
+            </p>
+            <p className="text-xs" style={{ color: "#7A6F68" }}>
+              Click any shade in the wheel
+            </p>
+          </div>
+        )}
+        <label
+          className="flex items-center justify-center gap-2 w-full py-2 rounded-xl cursor-pointer text-xs font-medium hover:opacity-80 transition-all"
+          style={{
+            backgroundColor: "#F5F0EA",
+            color: "#7A6F68",
+            border: "1px solid #E5DDD5",
+          }}
+        >
+          <Camera size={13} />
+          Match from photo
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoMatch}
+          />
+        </label>
+        <p
+          className="text-xs text-center leading-snug"
+          style={{ color: "#B0A8A0" }}
+        >
+          Approximate only — lighting & camera affect results
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const BODY_TYPES = [
   { id: "hourglass", label: "Hourglass", icon: "◐" },
@@ -156,29 +536,24 @@ export default function ProfileClient({
   const uploadAvatar = async (dataUrl: string) => {
     setSaving(true);
     try {
-      const base64 = dataUrl.split(",")[1];
-      const binaryString = atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      const fetchRes = await fetch(dataUrl);
+      const blob = await fetchRes.blob();
+      const fd = new FormData();
+      fd.append("file", blob, "avatar.jpg");
+
+      const resp = await fetch("/api/upload-profile-photo", {
+        method: "POST",
+        body: fd,
+      });
+      if (!resp.ok) {
+        const errJson = await resp
+          .json()
+          .catch(() => ({ error: resp.statusText }));
+        throw new Error(errJson.error || "Upload failed");
       }
-      const blob = new Blob([bytes], { type: "image/jpeg" });
-
-      const { error: uploadError } = await supabase.storage
-        .from("wardrobe-items")
-        .upload(`avatars/${userId}/avatar.jpg`, blob, {
-          contentType: "image/jpeg",
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage
-        .from("wardrobe-items")
-        .getPublicUrl(`avatars/${userId}/avatar.jpg`);
-      setAvatarUrl(publicUrl);
+      const { url } = await resp.json();
+      setAvatarUrl(url);
+      await supabase.from("profiles").upsert({ id: userId, avatar_url: url });
       alert("Photo uploaded successfully!");
     } catch (err) {
       console.error(err);
@@ -634,59 +1009,18 @@ export default function ProfileClient({
           </div>
         </div>
 
-        {/* Skin Tone Picker - 6x5 Grid */}
+        {/* Skin Tone Wheel */}
         <div>
           <label
-            className="block text-sm font-medium mb-3"
+            className="block text-sm font-medium mb-4"
             style={{ color: "#2B2B2B" }}
           >
             Skin Tone
           </label>
-          <div className="grid grid-cols-6 gap-2">
-            {SKIN_TONE_COLORS.flat().map((color, index) => (
-              <button
-                key={index}
-                onClick={() => setForm({ ...form, skin_tone_palette: color })}
-                className="relative w-full aspect-square rounded-lg transition-all hover:scale-105"
-                style={{
-                  backgroundColor: color,
-                  border:
-                    form.skin_tone_palette === color
-                      ? "3px solid #2B2B2B"
-                      : "2px solid transparent",
-                  boxShadow:
-                    form.skin_tone_palette === color
-                      ? "0 4px 12px rgba(0,0,0,0.2)"
-                      : "none",
-                }}
-                title={color}
-              >
-                {form.skin_tone_palette === color && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Check
-                      size={16}
-                      style={{
-                        color:
-                          color === "#FFFFFF" ||
-                          color === "#FFECD2" ||
-                          color === "#FDDBB4" ||
-                          color === "#F5C9A8" ||
-                          color === "#F5D0A0" ||
-                          color === "#FFE0B8"
-                            ? "#2B2B2B"
-                            : "#FFFFFF",
-                      }}
-                    />
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-          {form.skin_tone_palette && (
-            <p className="text-xs mt-2" style={{ color: "#7A6F68" }}>
-              Selected: {form.skin_tone_palette}
-            </p>
-          )}
+          <SkinToneWheel
+            value={form.skin_tone_palette}
+            onChange={(hex) => setForm({ ...form, skin_tone_palette: hex })}
+          />
         </div>
 
         {/* Style Preferences */}
