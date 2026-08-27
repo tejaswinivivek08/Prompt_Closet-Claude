@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import type { SavedStyle } from "@/app/app/closet/types";
 
 const QUICK_PROMPTS = [
   { label: "Diwali outfit", emoji: "✨" },
@@ -387,6 +388,9 @@ export default function StyleClient({
   const [placeholderIdx] = useState(() =>
     Math.floor(Math.random() * PLACEHOLDERS.length),
   );
+  const [savedStyles, setSavedStyles] = useState<SavedStyle[]>([]);
+  const [selectedStyle, setSelectedStyle] = useState<SavedStyle | null>(null);
+  const [showStylePicker, setShowStylePicker] = useState(false);
   const supabase = createClient();
 
   // Load saved outfits on mount
@@ -403,6 +407,14 @@ export default function StyleClient({
     };
     loadSaved();
   }, [userId, supabase]);
+
+  // Load saved style presets
+  useEffect(() => {
+    fetch("/api/saved-styles")
+      .then((r) => r.json())
+      .then((data) => setSavedStyles(data.styles ?? []))
+      .catch(() => {});
+  }, []);
 
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
@@ -423,7 +435,18 @@ export default function StyleClient({
       const res = await fetch("/api/magicbar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery, userId }),
+        body: JSON.stringify({
+          query: searchQuery,
+          userId,
+          ...(selectedStyle && {
+            styleContext: {
+              name: selectedStyle.name,
+              tags: selectedStyle.tags,
+              notes: selectedStyle.notes,
+              item_ids: selectedStyle.item_ids,
+            },
+          }),
+        }),
       });
       const data = await res.json();
 
@@ -528,6 +551,40 @@ export default function StyleClient({
           border: "1px solid #F0EBE6",
         }}
       >
+        {/* Style preset selector */}
+        {savedStyles.length > 0 && (
+          <div className="flex items-center gap-2 mb-4">
+            <span
+              className="text-xs font-medium shrink-0"
+              style={{ color: "#7A6F68" }}
+            >
+              Style preset:
+            </span>
+            <button
+              onClick={() => setShowStylePicker(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: selectedStyle
+                  ? "rgba(201,132,122,0.12)"
+                  : "#F5F0EA",
+                color: selectedStyle ? "#C9847A" : "#7A6F68",
+                border: `1px solid ${selectedStyle ? "#C9847A" : "#E5DDD5"}`,
+              }}
+            >
+              {selectedStyle ? selectedStyle.name : "None"} ▾
+            </button>
+            {selectedStyle && (
+              <button
+                onClick={() => setSelectedStyle(null)}
+                className="text-xs"
+                style={{ color: "#7A6F68" }}
+              >
+                ✕ Clear
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Search input row */}
         <div
           className="flex items-start gap-3 rounded-2xl px-4 py-3.5 mb-5 transition-all"
@@ -760,6 +817,85 @@ export default function StyleClient({
           </>
         )}
       </div>
+
+      {/* Style preset picker bottom sheet */}
+      {showStylePicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-end"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+          onClick={() => setShowStylePicker(false)}
+        >
+          <div
+            className="w-full rounded-t-2xl p-6 max-h-[60vh] overflow-y-auto"
+            style={{ backgroundColor: "#FFFFFF" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold mb-4" style={{ color: "#2B2B2B" }}>
+              Choose a Style Preset
+            </h3>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setSelectedStyle(null);
+                  setShowStylePicker(false);
+                }}
+                className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium"
+                style={{
+                  backgroundColor: !selectedStyle
+                    ? "rgba(201,132,122,0.1)"
+                    : "#F5F0EA",
+                  color: "#2B2B2B",
+                  border: !selectedStyle
+                    ? "1px solid #C9847A"
+                    : "1px solid transparent",
+                }}
+              >
+                None — let AI decide freely
+              </button>
+              {savedStyles.map((style) => (
+                <button
+                  key={style.id}
+                  onClick={() => {
+                    setSelectedStyle(style);
+                    setShowStylePicker(false);
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-xl"
+                  style={{
+                    backgroundColor:
+                      selectedStyle?.id === style.id
+                        ? "rgba(201,132,122,0.1)"
+                        : "#F5F0EA",
+                    border:
+                      selectedStyle?.id === style.id
+                        ? "1px solid #C9847A"
+                        : "1px solid transparent",
+                  }}
+                >
+                  <p
+                    className="font-semibold text-sm"
+                    style={{ color: "#2B2B2B" }}
+                  >
+                    {style.name}
+                  </p>
+                  {style.tags.length > 0 && (
+                    <p className="text-xs mt-0.5" style={{ color: "#C9847A" }}>
+                      {style.tags.join(" · ")}
+                    </p>
+                  )}
+                  {style.notes && (
+                    <p
+                      className="text-xs mt-0.5 italic"
+                      style={{ color: "#7A6F68" }}
+                    >
+                      {style.notes}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
