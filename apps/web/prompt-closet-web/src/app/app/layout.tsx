@@ -35,7 +35,7 @@ export default async function AppLayout({
             {/* Logo */}
             <Link href="/app/closet" className="flex items-center gap-3">
               <img
-                src="/logo.png"
+                src="/icons/Prompt_Closet Logo.png"
                 alt="Prompt Closet"
                 style={{ height: 52, width: "auto" }}
               />

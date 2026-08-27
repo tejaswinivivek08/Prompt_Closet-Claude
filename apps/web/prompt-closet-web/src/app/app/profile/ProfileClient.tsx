@@ -165,8 +165,8 @@ export default function ProfileClient({
       const blob = new Blob([bytes], { type: "image/jpeg" });
 
       const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(`${userId}/avatar.jpg`, blob, {
+        .from("wardrobe-items")
+        .upload(`avatars/${userId}/avatar.jpg`, blob, {
           contentType: "image/jpeg",
           upsert: true,
         });
@@ -175,7 +175,9 @@ export default function ProfileClient({
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(`${userId}/avatar.jpg`);
+      } = supabase.storage
+        .from("wardrobe-items")
+        .getPublicUrl(`avatars/${userId}/avatar.jpg`);
       setAvatarUrl(publicUrl);
       alert("Photo uploaded successfully!");
     } catch (err) {
