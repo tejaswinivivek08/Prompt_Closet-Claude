@@ -35,12 +35,9 @@ export default function AppNav() {
               alt={label}
               className="object-contain"
               style={{
-                width: 32,
-                height: 32,
-                opacity: isActive ? 1 : 0.6,
-                filter: isActive
-                  ? "brightness(0) saturate(100%) invert(60%) sepia(30%) saturate(600%) hue-rotate(330deg)"
-                  : "none",
+                width: 40,
+                height: 40,
+                opacity: isActive ? 1 : 0.5,
               }}
             />
             <span
