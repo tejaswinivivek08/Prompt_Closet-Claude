@@ -101,6 +101,12 @@ Rules:
 async function callClaude(
   query: string,
   items: WardrobeItem[],
+  styleContext: {
+    name: string;
+    tags: string[];
+    notes: string | null;
+    item_ids: string[];
+  } | null,
 ): Promise<any | null> {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (!anthropicKey) {
@@ -133,7 +139,14 @@ async function callClaude(
     })
     .join("\n");
 
-  const userMessage = `User query: "${query}"
+  const styleContextBlock = styleContext
+    ? `\n\nUser's saved style preset: "${styleContext.name}"
+Tags: ${styleContext.tags.join(", ")}${styleContext.notes ? `\nStyling notes: ${styleContext.notes}` : ""}
+Preferred item IDs from this preset: ${styleContext.item_ids.join(", ")}
+When generating outfits, prefer and prioritise items from this preset where possible. Match the mood and tags of this saved look.`
+    : "";
+
+  const userMessage = `User query: "${query}"${styleContextBlock}
 
 My wardrobe (${items.length} items):
 ${catalog}
@@ -390,7 +403,7 @@ async function getWardrobeItems(
 }
 
 export async function POST(request: Request) {
-  const { query, userId } = await request.json();
+  const { query, userId, styleContext } = await request.json();
 
   if (!query?.trim()) {
     return NextResponse.json({ error: "Query is required." }, { status: 400 });
@@ -414,7 +427,7 @@ export async function POST(request: Request) {
     }
 
     // Try Claude first
-    const claudeResult = await callClaude(query, items);
+    const claudeResult = await callClaude(query, items, styleContext ?? null);
 
     if (claudeResult) {
       if (claudeResult.response_type === "items") {

@@ -6,6 +6,8 @@ import ItemCard from "@/components/ItemCard";
 import FilterPill from "@/components/FilterPill";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import { createClient } from "@/lib/supabase/client";
+import MyStylesGallery from "./MyStylesGallery";
+import type { WardrobeItemBasic } from "./types";
 
 const CATEGORIES = [
   "All",
@@ -39,6 +41,7 @@ export default function ClosetClient({
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+  const [activeTab, setActiveTab] = useState<"wardrobe" | "styles">("wardrobe");
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { All: items.length };
@@ -258,369 +261,418 @@ export default function ClosetClient({
     }
   };
 
+  const wardrobeBasicItems: WardrobeItemBasic[] = items.map((i) => ({
+    id: i.id,
+    image_url: i.image_url,
+    category: i.category,
+    suggested_name: i.suggested_name ?? null,
+  }));
+
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold mb-1" style={{ color: "#2B2B2B" }}>
-            My Closet
-          </h1>
-          <p className="text-sm" style={{ color: "#7A6F68" }}>
-            {items.length} items
-          </p>
-        </div>
-        <button
-          onClick={openUploadModal}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full cursor-pointer transition-all hover:opacity-90"
-          style={{
-            backgroundColor: "#C9847A",
-            color: "#FFFFFF",
-            boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
-          }}
-        >
-          <img
-            src="/icons/Add Icon.png"
-            alt="Add"
-            className="w-10 h-10 object-contain brightness-0 invert"
-          />
-          <span className="text-sm font-semibold">Add Item</span>
-        </button>
-      </div>
-
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl overflow-hidden"
-            style={{ backgroundColor: "#FFFFFF" }}
+      {/* Sub-tab switcher */}
+      <div
+        className="flex gap-1 mb-6 p-1 rounded-2xl"
+        style={{
+          backgroundColor: "#FFFFFF",
+          border: "1px solid #E5DDD5",
+          width: "fit-content",
+        }}
+      >
+        {(["wardrobe", "styles"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className="px-5 py-2 rounded-xl text-sm font-semibold capitalize transition-all"
+            style={{
+              backgroundColor: activeTab === tab ? "#C9847A" : "transparent",
+              color: activeTab === tab ? "#FFFFFF" : "#7A6F68",
+            }}
           >
-            {/* Modal Header */}
-            <div
-              className="flex items-center justify-between p-4 border-b"
-              style={{ borderColor: "#F0EBE6" }}
-            >
-              <h2 className="font-bold" style={{ color: "#2B2B2B" }}>
-                Add New Item
-              </h2>
-              <button
-                onClick={closeUploadModal}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: "#F5F0EA" }}
-              >
-                <X size={16} style={{ color: "#7A6F68" }} />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {/* Preview or Upload Area */}
-              {previewImage ? (
-                <div className="relative">
-                  <img
-                    src={previewImage}
-                    alt="Preview"
-                    className="w-full max-h-64 object-contain rounded-xl"
-                    style={{ backgroundColor: "#F5F0EA" }}
-                  />
-                  <button
-                    onClick={() => setPreviewImage(null)}
-                    className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                  >
-                    <X size={16} className="text-white" />
-                  </button>
-                </div>
-              ) : (
-                <div
-                  className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all"
-                  style={{ borderColor: "#E5DDD5", backgroundColor: "#F5F0EA" }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOver(true);
-                  }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDropOnModal}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-                    style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
-                  >
-                    <Upload size={24} style={{ color: "#C9847A" }} />
-                  </div>
-                  <p
-                    className="font-semibold mb-1"
-                    style={{ color: "#2B2B2B" }}
-                  >
-                    Drop photo here or click to browse
-                  </p>
-                  <p className="text-xs" style={{ color: "#7A6F68" }}>
-                    JPG, PNG, WEBP · select multiple to add in bulk
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
-                </div>
-              )}
-
-              {/* Webcam Section */}
-              {!previewImage && (
-                <div className="space-y-3">
-                  {webcamStream ? (
-                    <div
-                      className="relative rounded-xl overflow-hidden"
-                      style={{ backgroundColor: "#1a1a1a" }}
-                    >
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full max-h-48 object-contain"
-                      />
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-                        <button
-                          onClick={captureFromWebcam}
-                          className="px-6 py-2 rounded-xl text-sm font-semibold text-white"
-                          style={{ backgroundColor: "#C9847A" }}
-                        >
-                          Capture
-                        </button>
-                        <button
-                          onClick={stopWebcam}
-                          className="px-4 py-2 rounded-xl text-sm font-medium"
-                          style={{
-                            backgroundColor: "rgba(255,255,255,0.2)",
-                            color: "#ffffff",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={startWebcam}
-                      className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                      style={{
-                        backgroundColor: "#F5F0EA",
-                        color: "#2B2B2B",
-                        border: "1px solid #E5DDD5",
-                      }}
-                    >
-                      <Camera size={16} />
-                      Use Camera
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              {previewImage && (
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setPreviewImage(null)}
-                    className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all"
-                    style={{
-                      backgroundColor: "#F5F0EA",
-                      color: "#7A6F68",
-                      border: "1px solid #E5DDD5",
-                    }}
-                  >
-                    Retake
-                  </button>
-                  <button
-                    onClick={uploadPreviewImage}
-                    className="flex-1 py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2"
-                    style={{
-                      backgroundColor: "#C9847A",
-                      boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
-                    }}
-                  >
-                    <Wand2 size={14} />
-                    Analyze with AI
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filter pills */}
-      <div className="flex gap-2 flex-wrap mb-8">
-        {CATEGORIES.map((cat) => (
-          <FilterPill
-            key={cat}
-            label={cat}
-            count={categoryCounts[cat] || 0}
-            active={filter === cat}
-            onClick={() => setFilter(cat)}
-          />
+            {tab === "wardrobe" ? "Wardrobe" : "My Styles"}
+          </button>
         ))}
       </div>
 
-      {/* Upload Drop Zone */}
-      {uploading && (
-        <div
-          className="rounded-2xl border-2 border-dashed p-12 mb-8 flex flex-col items-center justify-center"
-          style={{
-            borderColor: dragOver ? "#C9847A" : "#E5DDD5",
-            backgroundColor: "rgba(201,132,122,0.05)",
-          }}
-        >
-          {analyzing ? (
-            <>
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
-                style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
-              >
-                <Wand2
-                  size={24}
-                  className="animate-pulse"
-                  style={{ color: "#C9847A" }}
-                />
-              </div>
-              <p
-                className="text-base font-medium mb-2"
+      {/* My Styles tab */}
+      {activeTab === "styles" && (
+        <MyStylesGallery wardrobeItems={wardrobeBasicItems} userId={userId} />
+      )}
+
+      {/* Wardrobe tab */}
+      {activeTab === "wardrobe" && (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1
+                className="text-2xl font-bold mb-1"
                 style={{ color: "#2B2B2B" }}
               >
-                Analyzing with AI...
-              </p>
+                My Closet
+              </h1>
               <p className="text-sm" style={{ color: "#7A6F68" }}>
-                Detecting colors, patterns, and style
+                {items.length} items
               </p>
-            </>
-          ) : (
-            <>
-              <div
-                className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin mb-4"
-                style={{
-                  borderColor: "#C9847A",
-                  borderTopColor: "transparent",
-                }}
-              />
-              <p className="text-sm" style={{ color: "#7A6F68" }}>
-                Uploading photo...
-              </p>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Drag and Drop Zone (when not uploading) */}
-      {!uploading && items.length === 0 && (
-        <button
-          onClick={openUploadModal}
-          className="w-full rounded-2xl border-2 border-dashed p-12 mb-8 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-rose-gold"
-          style={{
-            borderColor: dragOver ? "#C9847A" : "#E5DDD5",
-            backgroundColor: dragOver ? "rgba(201,132,122,0.05)" : "#FFFFFF",
-          }}
-        >
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-            style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
-          >
-            <Upload size={28} style={{ color: "#C9847A" }} />
-          </div>
-          <p
-            className="text-base font-medium mb-1"
-            style={{ color: "#2B2B2B" }}
-          >
-            Drop photos here
-          </p>
-          <p className="text-sm" style={{ color: "#7A6F68" }}>
-            or click to upload (up to 5 photos per item)
-          </p>
-        </button>
-      )}
-
-      {/* Empty State */}
-      {filtered.length === 0 && !uploading && items.length > 0 && (
-        <div className="flex flex-col items-center justify-center py-24">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-            style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
-          >
-            <Shirt size={28} style={{ color: "#C9847A" }} />
-          </div>
-          <p
-            className="text-base font-medium mb-1"
-            style={{ color: "#2B2B2B" }}
-          >
-            No {filter !== "All" ? filter : ""} items
-          </p>
-          <p className="text-sm" style={{ color: "#7A6F68" }}>
-            {filter !== "All"
-              ? "Try a different category"
-              : "Add your first item to get started"}
-          </p>
-        </div>
-      )}
-
-      {/* Skeleton Loaders */}
-      {items.length === 0 && !uploading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="rounded-2xl overflow-hidden animate-pulse"
+            </div>
+            <button
+              onClick={openUploadModal}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full cursor-pointer transition-all hover:opacity-90"
               style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #F0EBE6",
+                backgroundColor: "#C9847A",
+                color: "#FFFFFF",
+                boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+              }}
+            >
+              <img
+                src="/icons/Add Icon.png"
+                alt="Add"
+                className="w-10 h-10 object-contain brightness-0 invert"
+              />
+              <span className="text-sm font-semibold">Add Item</span>
+            </button>
+          </div>
+
+          {/* Upload Modal */}
+          {showUploadModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+            >
+              <div
+                className="w-full max-w-md rounded-2xl overflow-hidden"
+                style={{ backgroundColor: "#FFFFFF" }}
+              >
+                {/* Modal Header */}
+                <div
+                  className="flex items-center justify-between p-4 border-b"
+                  style={{ borderColor: "#F0EBE6" }}
+                >
+                  <h2 className="font-bold" style={{ color: "#2B2B2B" }}>
+                    Add New Item
+                  </h2>
+                  <button
+                    onClick={closeUploadModal}
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: "#F5F0EA" }}
+                  >
+                    <X size={16} style={{ color: "#7A6F68" }} />
+                  </button>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {/* Preview or Upload Area */}
+                  {previewImage ? (
+                    <div className="relative">
+                      <img
+                        src={previewImage}
+                        alt="Preview"
+                        className="w-full max-h-64 object-contain rounded-xl"
+                        style={{ backgroundColor: "#F5F0EA" }}
+                      />
+                      <button
+                        onClick={() => setPreviewImage(null)}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                      >
+                        <X size={16} className="text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all"
+                      style={{
+                        borderColor: "#E5DDD5",
+                        backgroundColor: "#F5F0EA",
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragOver(true);
+                      }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={handleDropOnModal}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                        style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
+                      >
+                        <Upload size={24} style={{ color: "#C9847A" }} />
+                      </div>
+                      <p
+                        className="font-semibold mb-1"
+                        style={{ color: "#2B2B2B" }}
+                      >
+                        Drop photo here or click to browse
+                      </p>
+                      <p className="text-xs" style={{ color: "#7A6F68" }}>
+                        JPG, PNG, WEBP · select multiple to add in bulk
+                      </p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileSelect}
+                      />
+                    </div>
+                  )}
+
+                  {/* Webcam Section */}
+                  {!previewImage && (
+                    <div className="space-y-3">
+                      {webcamStream ? (
+                        <div
+                          className="relative rounded-xl overflow-hidden"
+                          style={{ backgroundColor: "#1a1a1a" }}
+                        >
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full max-h-48 object-contain"
+                          />
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                            <button
+                              onClick={captureFromWebcam}
+                              className="px-6 py-2 rounded-xl text-sm font-semibold text-white"
+                              style={{ backgroundColor: "#C9847A" }}
+                            >
+                              Capture
+                            </button>
+                            <button
+                              onClick={stopWebcam}
+                              className="px-4 py-2 rounded-xl text-sm font-medium"
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.2)",
+                                color: "#ffffff",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={startWebcam}
+                          className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                          style={{
+                            backgroundColor: "#F5F0EA",
+                            color: "#2B2B2B",
+                            border: "1px solid #E5DDD5",
+                          }}
+                        >
+                          <Camera size={16} />
+                          Use Camera
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  {previewImage && (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setPreviewImage(null)}
+                        className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all"
+                        style={{
+                          backgroundColor: "#F5F0EA",
+                          color: "#7A6F68",
+                          border: "1px solid #E5DDD5",
+                        }}
+                      >
+                        Retake
+                      </button>
+                      <button
+                        onClick={uploadPreviewImage}
+                        className="flex-1 py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2"
+                        style={{
+                          backgroundColor: "#C9847A",
+                          boxShadow: "0 4px 16px rgba(201,132,122,0.35)",
+                        }}
+                      >
+                        <Wand2 size={14} />
+                        Analyze with AI
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Filter pills */}
+          <div className="flex gap-2 flex-wrap mb-8">
+            {CATEGORIES.map((cat) => (
+              <FilterPill
+                key={cat}
+                label={cat}
+                count={categoryCounts[cat] || 0}
+                active={filter === cat}
+                onClick={() => setFilter(cat)}
+              />
+            ))}
+          </div>
+
+          {/* Upload Drop Zone */}
+          {uploading && (
+            <div
+              className="rounded-2xl border-2 border-dashed p-12 mb-8 flex flex-col items-center justify-center"
+              style={{
+                borderColor: dragOver ? "#C9847A" : "#E5DDD5",
+                backgroundColor: "rgba(201,132,122,0.05)",
+              }}
+            >
+              {analyzing ? (
+                <>
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+                    style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
+                  >
+                    <Wand2
+                      size={24}
+                      className="animate-pulse"
+                      style={{ color: "#C9847A" }}
+                    />
+                  </div>
+                  <p
+                    className="text-base font-medium mb-2"
+                    style={{ color: "#2B2B2B" }}
+                  >
+                    Analyzing with AI...
+                  </p>
+                  <p className="text-sm" style={{ color: "#7A6F68" }}>
+                    Detecting colors, patterns, and style
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div
+                    className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin mb-4"
+                    style={{
+                      borderColor: "#C9847A",
+                      borderTopColor: "transparent",
+                    }}
+                  />
+                  <p className="text-sm" style={{ color: "#7A6F68" }}>
+                    Uploading photo...
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Drag and Drop Zone (when not uploading) */}
+          {!uploading && items.length === 0 && (
+            <button
+              onClick={openUploadModal}
+              className="w-full rounded-2xl border-2 border-dashed p-12 mb-8 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-rose-gold"
+              style={{
+                borderColor: dragOver ? "#C9847A" : "#E5DDD5",
+                backgroundColor: dragOver
+                  ? "rgba(201,132,122,0.05)"
+                  : "#FFFFFF",
               }}
             >
               <div
-                className="aspect-square"
-                style={{ backgroundColor: "#F5F0EA" }}
-              />
-              <div className="p-3 space-y-2">
-                <div
-                  className="h-4 rounded"
-                  style={{ backgroundColor: "#F5F0EA", width: "70%" }}
-                />
-                <div
-                  className="h-3 rounded"
-                  style={{ backgroundColor: "#F5F0EA", width: "40%" }}
-                />
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
+              >
+                <Upload size={28} style={{ color: "#C9847A" }} />
               </div>
+              <p
+                className="text-base font-medium mb-1"
+                style={{ color: "#2B2B2B" }}
+              >
+                Drop photos here
+              </p>
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                or click to upload (up to 5 photos per item)
+              </p>
+            </button>
+          )}
+
+          {/* Empty State */}
+          {filtered.length === 0 && !uploading && items.length > 0 && (
+            <div className="flex flex-col items-center justify-center py-24">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: "rgba(201,132,122,0.1)" }}
+              >
+                <Shirt size={28} style={{ color: "#C9847A" }} />
+              </div>
+              <p
+                className="text-base font-medium mb-1"
+                style={{ color: "#2B2B2B" }}
+              >
+                No {filter !== "All" ? filter : ""} items
+              </p>
+              <p className="text-sm" style={{ color: "#7A6F68" }}>
+                {filter !== "All"
+                  ? "Try a different category"
+                  : "Add your first item to get started"}
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Items Grid */}
-      {filtered.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-          {filtered.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onClick={() => setSelectedItem(item)}
+          {/* Skeleton Loaders */}
+          {items.length === 0 && !uploading && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+              {[...Array(8)].map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl overflow-hidden animate-pulse"
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    border: "1px solid #F0EBE6",
+                  }}
+                >
+                  <div
+                    className="aspect-square"
+                    style={{ backgroundColor: "#F5F0EA" }}
+                  />
+                  <div className="p-3 space-y-2">
+                    <div
+                      className="h-4 rounded"
+                      style={{ backgroundColor: "#F5F0EA", width: "70%" }}
+                    />
+                    <div
+                      className="h-3 rounded"
+                      style={{ backgroundColor: "#F5F0EA", width: "40%" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Items Grid */}
+          {filtered.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+              {filtered.map((item) => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onClick={() => setSelectedItem(item)}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Item Detail Modal */}
+          {selectedItem && (
+            <ItemDetailModal
+              item={selectedItem}
+              userId={userId}
+              onClose={() => setSelectedItem(null)}
               onDelete={handleDelete}
+              onUpdate={handleUpdate}
             />
-          ))}
-        </div>
-      )}
-
-      {/* Item Detail Modal */}
-      {selectedItem && (
-        <ItemDetailModal
-          item={selectedItem}
-          userId={userId}
-          onClose={() => setSelectedItem(null)}
-          onDelete={handleDelete}
-          onUpdate={handleUpdate}
-        />
+          )}
+        </>
       )}
     </div>
   );
