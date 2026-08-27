@@ -110,6 +110,8 @@ function colorDistance(a: string, b: string) {
 
 const ALL_TONES = RING_TONES.flat();
 
+type Dot = { x: number; y: number; tone: Tone };
+
 function SkinToneWheel({
   value,
   onChange,
@@ -118,7 +120,7 @@ function SkinToneWheel({
   onChange: (hex: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const dotsRef = useRef<Array<{ x: number; y: number; tone: Tone }>>([]);
+  const dotsRef = useRef<Dot[]>([]);
   const [selectedTone, setSelectedTone] = useState<Tone | null>(() => {
     if (!value) return null;
     return (
@@ -141,7 +143,7 @@ function SkinToneWheel({
     ctx.fillStyle = "rgba(245,240,234,0.5)";
     ctx.fill();
 
-    const dots: typeof dotsRef.current = [];
+    const dots: Dot[] = [];
     RING_TONES.forEach((ring, ri) => {
       ring.forEach((tone, i) => {
         const angle = (i / ring.length) * 2 * Math.PI - Math.PI / 2;
@@ -202,8 +204,8 @@ function SkinToneWheel({
     };
   };
 
-  const hitTest = (mx: number, my: number) => {
-    let closest: (typeof dotsRef.current)[0] | null = null;
+  const hitTest = (mx: number, my: number): Dot | null => {
+    let closest: Dot | null = null;
     let minD = Infinity;
     dotsRef.current.forEach((dot) => {
       const d = Math.hypot(mx - dot.x, my - dot.y);
