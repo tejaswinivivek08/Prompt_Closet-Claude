@@ -21,11 +21,22 @@ export default function LandingPage() {
             <img
               src="/logo.png"
               alt="Prompt Closet"
-              style={{ height: "var(--logo-size, 48px)", width: "auto" }}
+              style={{ height: 52, width: "auto" }}
             />
-            <span className="font-bold text-lg" style={{ color: "#2B2B2B" }}>
-              Prompt Closet
-            </span>
+            <div>
+              <p
+                className="font-bold leading-tight"
+                style={{ color: "#2B2B2B", fontSize: 17 }}
+              >
+                Prompt Closet
+              </p>
+              <p
+                className="text-xs leading-tight"
+                style={{ color: "#C9847A", letterSpacing: "0.04em" }}
+              >
+                AI Stylist
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <Link
@@ -451,11 +462,20 @@ export default function LandingPage() {
               <img
                 src="/logo.png"
                 alt="Prompt Closet"
-                className="h-6 w-auto brightness-0 invert"
+                style={{ height: 36, width: "auto" }}
+                className="brightness-0 invert"
               />
-              <span className="font-bold text-sm text-white">
-                Prompt Closet
-              </span>
+              <div>
+                <p className="font-bold text-sm text-white leading-tight">
+                  Prompt Closet
+                </p>
+                <p
+                  className="text-xs leading-tight"
+                  style={{ color: "#C9847A" }}
+                >
+                  AI Stylist
+                </p>
+              </div>
             </div>
             <div className="flex gap-6">
               <a href="#" className="text-xs" style={{ color: "#7A6F68" }}>

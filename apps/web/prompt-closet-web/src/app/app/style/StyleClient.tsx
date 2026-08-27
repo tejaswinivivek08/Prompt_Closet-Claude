@@ -378,6 +378,9 @@ export default function StyleClient({
     items: OutfitItem[];
     message: string;
   } | null>(null);
+  const [resultSource, setResultSource] = useState<
+    "claude" | "fallback" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -413,6 +416,7 @@ export default function StyleClient({
     setError(null);
     setOutfits([]);
     setSearchItems(null);
+    setResultSource(null);
     setShowHistory(false);
 
     try {
@@ -437,6 +441,7 @@ export default function StyleClient({
             items: data.items,
             message: data.message || `Found ${data.items.length} items.`,
           });
+          setResultSource(data.source || null);
         }
         return;
       }
@@ -448,6 +453,7 @@ export default function StyleClient({
       }
 
       setOutfits(data.outfits);
+      setResultSource(data.source || null);
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
@@ -645,6 +651,34 @@ export default function StyleClient({
 
       {/* Loading shimmer */}
       {loading && <ShimmerLoader />}
+
+      {/* Source badge — tells you whether Claude or keyword fallback answered */}
+      {!loading && resultSource && (outfits.length > 0 || searchItems) && (
+        <div className="flex items-center gap-1.5 mb-3">
+          {resultSource === "claude" ? (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+              style={{
+                backgroundColor: "rgba(201,132,122,0.12)",
+                color: "#C9847A",
+              }}
+            >
+              ✦ AI Styled
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+              style={{
+                backgroundColor: "#F5F0EA",
+                color: "#7A6F68",
+                border: "1px solid #E5DDD5",
+              }}
+            >
+              Keyword match · Add ANTHROPIC_API_KEY for full AI
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Item search results (e.g. "show me all my black clothes") */}
       {!loading && searchItems && (

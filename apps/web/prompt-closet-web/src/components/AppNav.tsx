@@ -7,7 +7,7 @@ import { LogOut } from "lucide-react";
 const navItems = [
   { href: "/app/closet", label: "Closet", icon: "Closet Icon.png" },
   { href: "/app/style", label: "Magic Bar", icon: "Style Icon.png" },
-  { href: "/app/twin", label: "Digital Twin", icon: "User Profile Icon.png" },
+  { href: "/app/twin", label: "Digital Twin", icon: "Search Icon.png" },
   { href: "/app/profile", label: "Profile", icon: "User Profile Icon.png" },
 ];
 
@@ -22,7 +22,7 @@ export default function AppNav() {
           <Link
             key={href}
             href={href}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all relative"
             style={{
               color: isActive ? "#C9847A" : "#7A6F68",
               backgroundColor: isActive
@@ -33,21 +33,53 @@ export default function AppNav() {
             <img
               src={`/icons/${icon}`}
               alt={label}
-              className="w-6 h-6 object-contain"
-              style={{ opacity: isActive ? 1 : 0.7 }}
+              className="object-contain"
+              style={{
+                width: 32,
+                height: 32,
+                opacity: isActive ? 1 : 0.6,
+                filter: isActive
+                  ? "brightness(0) saturate(100%) invert(60%) sepia(30%) saturate(600%) hue-rotate(330deg)"
+                  : "none",
+              }}
             />
-            <span className="hidden sm:inline">{label}</span>
+            <span
+              className="text-xs font-semibold"
+              style={{
+                color: isActive ? "#C9847A" : "#7A6F68",
+                letterSpacing: "0.01em",
+              }}
+            >
+              {label}
+            </span>
+            {isActive && (
+              <span
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full"
+                style={{
+                  width: 20,
+                  height: 3,
+                  backgroundColor: "#C9847A",
+                  borderRadius: 99,
+                }}
+              />
+            )}
           </Link>
         );
       })}
-      <form action="/api/auth/signout" method="POST" className="inline ml-2">
+
+      <div
+        className="w-px mx-2"
+        style={{ height: 32, backgroundColor: "#E5DDD5" }}
+      />
+
+      <form action="/api/auth/signout" method="POST" className="inline">
         <button
           type="submit"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all hover:opacity-70"
+          className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all hover:opacity-70"
           style={{ color: "#7A6F68" }}
         >
-          <LogOut size={16} />
-          <span className="hidden sm:inline">Sign out</span>
+          <LogOut size={22} />
+          <span className="text-xs font-medium">Sign out</span>
         </button>
       </form>
     </div>
