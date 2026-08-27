@@ -19,7 +19,7 @@ export default function LandingPage() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <img
-              src="/logo.png"
+              src="/icons/Prompt_Closet Logo.png"
               alt="Prompt Closet"
               style={{ height: 52, width: "auto" }}
             />
@@ -168,7 +168,7 @@ export default function LandingPage() {
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
                 <img
-                  src="/icons/Closet Icon.png"
+                  src="/icons/Closet icon.png"
                   alt="Closet"
                   className="w-10 h-10 object-contain"
                 />
@@ -198,8 +198,8 @@ export default function LandingPage() {
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
                 <img
-                  src="/icons/Style Icon.png"
-                  alt="Style"
+                  src="/icons/Magic Bar Icon.png"
+                  alt="Magic Bar"
                   className="w-10 h-10 object-contain"
                 />
               </div>
@@ -228,7 +228,7 @@ export default function LandingPage() {
                 style={{ backgroundColor: "rgba(201,132,122,0.15)" }}
               >
                 <img
-                  src="/icons/User Profile Icon.png"
+                  src="/icons/Digital Twin Icon.png"
                   alt="Digital Twin"
                   className="w-10 h-10 object-contain"
                 />
@@ -460,7 +460,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <img
-                src="/logo.png"
+                src="/icons/Prompt_Closet Logo.png"
                 alt="Prompt Closet"
                 style={{ height: 36, width: "auto" }}
                 className="brightness-0 invert"

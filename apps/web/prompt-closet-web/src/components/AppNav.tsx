@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 
 const navItems = [
-  { href: "/app/closet", label: "Closet", icon: "Closet Icon.png" },
-  { href: "/app/style", label: "Magic Bar", icon: "Style Icon.png" },
-  { href: "/app/twin", label: "Digital Twin", icon: "Search Icon.png" },
-  { href: "/app/profile", label: "Profile", icon: "User Profile Icon.png" },
+  { href: "/app/closet", label: "Closet", icon: "Closet icon.png" },
+  { href: "/app/style", label: "Magic Bar", icon: "Magic Bar Icon.png" },
+  { href: "/app/twin", label: "Digital Twin", icon: "Digital Twin Icon.png" },
+  { href: "/app/profile", label: "Profile", icon: "Profile Icon.png" },
 ];
 
 export default function AppNav() {
