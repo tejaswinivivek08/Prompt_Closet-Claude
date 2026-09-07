@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
-import { Shirt, Upload, Loader2, Wand2, Camera, X, Check } from "lucide-react";
+import {
+  Shirt,
+  Upload,
+  Loader2,
+  Wand2,
+  Camera,
+  X,
+  Check,
+  Scissors,
+} from "lucide-react";
 import ItemCard from "@/components/ItemCard";
 import FilterPill from "@/components/FilterPill";
 import ItemDetailModal from "@/components/ItemDetailModal";
@@ -34,6 +43,8 @@ export default function ClosetClient({
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
+  const [bgRemovedImage, setBgRemovedImage] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -82,10 +93,11 @@ export default function ClosetClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageUrl: publicUrl, userId }),
         });
-        const { item: analyzedItem } = await response.json();
+        const data = await response.json();
+        if (!data.item) throw new Error(data.error || "No item returned");
 
         // Add the new item to state
-        setItems((prev) => [analyzedItem, ...prev]);
+        setItems((prev) => [data.item, ...prev]);
       } catch {
         // Fallback: create item with basic data
         const { data: newItem, error: insertError } = await supabase
@@ -93,6 +105,7 @@ export default function ClosetClient({
           .insert({
             user_id: userId,
             image_url: publicUrl,
+            is_active: true,
             category: "top",
             image_urls: [publicUrl],
             suggested_name: "New Item",
@@ -127,13 +140,40 @@ export default function ClosetClient({
   const openUploadModal = () => {
     setShowUploadModal(true);
     setPreviewImage(null);
+    setBgRemovedImage(null);
     stopWebcam();
   };
 
   const closeUploadModal = () => {
     setShowUploadModal(false);
     setPreviewImage(null);
+    setBgRemovedImage(null);
     stopWebcam();
+  };
+
+  const removeBackground = async () => {
+    if (!previewImage) return;
+    setRemovingBg(true);
+    try {
+      const res = await fetch("/api/remove-background", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageDataUrl: previewImage }),
+      });
+      const data = await res.json();
+      if (data.resultDataUrl) {
+        setBgRemovedImage(data.resultDataUrl);
+      } else {
+        alert(
+          data.error ||
+            "Background removal not available. Add REMOVEBG_API_KEY to your environment.",
+        );
+      }
+    } catch {
+      alert("Background removal failed. The original image will be used.");
+    } finally {
+      setRemovingBg(false);
+    }
   };
 
   const stopWebcam = () => {
@@ -206,17 +246,22 @@ export default function ClosetClient({
 
   const uploadPreviewImage = async () => {
     if (!previewImage) return;
+    // Use BG-removed image if the user chose it, otherwise use original
+    const sourceImage = bgRemovedImage || previewImage;
     setUploading(true);
     setAnalyzing(true);
     setShowUploadModal(false);
 
     try {
       // Convert data URL to blob
-      const res = await fetch(previewImage);
+      const res = await fetch(sourceImage);
       const blob = await res.blob();
-      const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+      const isPng = bgRemovedImage !== null;
+      const file = new File([blob], isPng ? "item.png" : "item.jpg", {
+        type: isPng ? "image/png" : "image/jpeg",
+      });
 
-      const ext = "jpg";
+      const ext = isPng ? "png" : "jpg";
       const path = `${userId}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("wardrobe-items")
@@ -234,14 +279,19 @@ export default function ClosetClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageUrl: publicUrl, userId }),
         });
-        const { item: analyzedItem } = await response.json();
-        setItems((prev) => [analyzedItem, ...prev]);
+        const data = await response.json();
+        if (data.item) {
+          setItems((prev) => [data.item, ...prev]);
+        } else {
+          throw new Error(data.error || "No item returned");
+        }
       } catch {
         const { data: newItem, error: insertError } = await supabase
           .from("wardrobe_items")
           .insert({
             user_id: userId,
             image_url: publicUrl,
+            is_active: true,
             category: "top",
             image_urls: [publicUrl],
             suggested_name: "New Item",
@@ -258,6 +308,7 @@ export default function ClosetClient({
       setUploading(false);
       setAnalyzing(false);
       setPreviewImage(null);
+      setBgRemovedImage(null);
     }
   };
 
@@ -363,20 +414,83 @@ export default function ClosetClient({
                 <div className="p-4 space-y-4">
                   {/* Preview or Upload Area */}
                   {previewImage ? (
-                    <div className="relative">
-                      <img
-                        src={previewImage}
-                        alt="Preview"
-                        className="w-full max-h-64 object-contain rounded-xl"
-                        style={{ backgroundColor: "#F5F0EA" }}
-                      />
-                      <button
-                        onClick={() => setPreviewImage(null)}
-                        className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                      >
-                        <X size={16} className="text-white" />
-                      </button>
+                    <div className="space-y-3">
+                      {/* Image preview — shows BG-removed version if available */}
+                      <div className="relative">
+                        <img
+                          src={bgRemovedImage || previewImage}
+                          alt="Preview"
+                          className="w-full max-h-64 object-contain rounded-xl"
+                          style={{
+                            backgroundColor: bgRemovedImage
+                              ? "transparent"
+                              : "#F5F0EA",
+                            backgroundImage: bgRemovedImage
+                              ? "repeating-conic-gradient(#e5e5e5 0% 25%, white 0% 50%) 0 0 / 16px 16px"
+                              : "none",
+                          }}
+                        />
+                        {bgRemovedImage && (
+                          <div
+                            className="absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
+                            style={{
+                              backgroundColor: "rgba(201,132,122,0.9)",
+                              color: "#fff",
+                            }}
+                          >
+                            <Check size={10} /> Background removed
+                          </div>
+                        )}
+                        <button
+                          onClick={() => {
+                            setPreviewImage(null);
+                            setBgRemovedImage(null);
+                          }}
+                          className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                        >
+                          <X size={16} className="text-white" />
+                        </button>
+                      </div>
+
+                      {/* Remove Background toggle */}
+                      {!bgRemovedImage ? (
+                        <button
+                          onClick={removeBackground}
+                          disabled={removingBg}
+                          className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                          style={{
+                            backgroundColor: removingBg
+                              ? "#F5F0EA"
+                              : "rgba(201,132,122,0.08)",
+                            color: removingBg ? "#7A6F68" : "#C9847A",
+                            border: "1px solid rgba(201,132,122,0.3)",
+                          }}
+                        >
+                          {removingBg ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              Removing background...
+                            </>
+                          ) : (
+                            <>
+                              <Scissors size={14} /> Remove Background
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setBgRemovedImage(null)}
+                          className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+                          style={{
+                            backgroundColor: "#F5F0EA",
+                            color: "#7A6F68",
+                            border: "1px solid #E5DDD5",
+                          }}
+                        >
+                          Keep original instead
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div
@@ -475,7 +589,10 @@ export default function ClosetClient({
                   {previewImage && (
                     <div className="flex gap-3">
                       <button
-                        onClick={() => setPreviewImage(null)}
+                        onClick={() => {
+                          setPreviewImage(null);
+                          setBgRemovedImage(null);
+                        }}
                         className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all"
                         style={{
                           backgroundColor: "#F5F0EA",

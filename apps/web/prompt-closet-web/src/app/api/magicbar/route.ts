@@ -8,6 +8,8 @@ interface WardrobeItem {
   image_url: string;
   category: string;
   subcategory?: string | null;
+  style_origin?: "indian" | "western" | "neutral" | null;
+  is_full_set?: boolean | null;
   colors: string[] | null;
   occasions: string[] | null;
   suggested_name: string | null;
@@ -33,6 +35,30 @@ Fashion logic you MUST follow:
 - Shoes and bags are part of the complete look
 - Never match items based only on category — evaluate colour theory, silhouette, proportion, occasion
 - Never create technically possible but visually ridiculous combinations
+
+## Indian Wear Rules — CRITICAL
+
+The wardrobe catalog uses Origin:indian / Origin:western / Origin:neutral and FullSet:true.
+
+Indian wear MUST follow these rules without exception:
+- FullSet:true items (saree, lehenga set, salwar suit set, kurta set with dupatta) = COMPLETE OUTFIT. Do NOT pair with Western trousers, shorts, jeans, or skirts.
+- A saree is worn with a blouse (which may already be in the set). Suggest ethnic footwear (kolhapuris, heels) and appropriate jewellery.
+- A lehenga set = choli + skirt + dupatta. It is already complete. Add jewellery + ethnic footwear only.
+- A salwar suit set = kurta + salwar/pant + dupatta. Complete as-is. Add footwear + jewellery.
+- A standalone kurta (Indian, not full set) pairs with: churidar, palazzo, ethnic straight pants, leggings — NOT with Western jeans (unless it is a short kurti, Origin:indian + short style_notes). If no ethnic bottoms exist in the wardrobe, say so honestly.
+- Dupatta: accent only for Indian looks. Do NOT suggest a dupatta with a Western outfit.
+- NEVER pair: saree + jeans, lehenga + Western trousers, kurta + shorts, Indian set + Western separates.
+- If the query is for Indian wear and the wardrobe has Indian items, generate ONLY Indian-appropriate looks.
+- If the query is for Western wear and the wardrobe has Indian items, you may note that Indian options are available but focus on the Western look.
+- Indian footwear: kolhapuris, juttis, ethnic heels, wedges — appropriate for Indian looks. Sneakers are BLOCKED for Indian ethnic.
+- Jewellery pairing for Indian looks: jhumkas, chandbalis, kundan, polki, temple jewellery, oxidised silver — match the formality and colour palette.
+
+Outfit structure by clothing type:
+- WESTERN: Top + Bottom + Shoes + optional bag + optional jewellery
+- INDIAN SEPARATES: Indian top (kurta) + Ethnic bottom + optional dupatta + Ethnic footwear + Jewellery
+- FULL INDIAN SET (FullSet:true): The set itself + Ethnic footwear + Jewellery
+- WESTERN DRESS: Dress alone + Shoes + optional bag + optional jewellery
+- WESTERN CO-ORD SET: The set + Shoes + optional bag
 
 ## Query Types You Handle
 
@@ -122,10 +148,14 @@ async function callClaude(
   // Build compact wardrobe catalog for Claude
   const catalog = items
     .map((i) => {
+      const origin =
+        i.style_origin || (i.category === "traditional" ? "indian" : "western");
       const parts = [
         `ID:${i.id}`,
         `Name:${i.suggested_name || i.category}`,
         `Cat:${i.category}${i.subcategory ? `/${i.subcategory}` : ""}`,
+        `Origin:${origin}`,
+        i.is_full_set ? `FullSet:true` : "",
         `Colors:${(i.colors || []).join(",")}`,
         `Occasions:${(i.occasions || []).join(",")}`,
         `Season:${(i.season || []).join(",")}`,
@@ -395,7 +425,7 @@ async function getWardrobeItems(
   const { data } = await supabase
     .from("wardrobe_items")
     .select(
-      "id, image_url, category, subcategory, colors, occasions, suggested_name, season, pattern, fabric, style_notes",
+      "id, image_url, category, subcategory, style_origin, is_full_set, colors, occasions, suggested_name, season, pattern, fabric, style_notes",
     )
     .eq("user_id", userId)
     .eq("is_active", true);

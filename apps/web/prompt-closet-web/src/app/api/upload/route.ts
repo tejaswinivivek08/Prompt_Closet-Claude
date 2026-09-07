@@ -15,6 +15,8 @@ interface TagResult {
   season: string[];
   suggested_name: string;
   style_notes: string;
+  style_origin: "indian" | "western" | "neutral";
+  is_full_set: boolean;
 }
 
 const FALLBACK_TAGS: TagResult = {
@@ -28,6 +30,8 @@ const FALLBACK_TAGS: TagResult = {
   season: ["all-season"],
   suggested_name: "New Item",
   style_notes: "",
+  style_origin: "western",
+  is_full_set: false,
 };
 
 // Analyze image using MiniMax image generation with vision prompt
@@ -116,16 +120,26 @@ async function analyzeWithClaude(imageUrl: string): Promise<TagResult | null> {
                 text: `Analyze this clothing item and respond with ONLY a valid JSON object (no markdown, no explanation):
 {
   "category": "top|bottom|dress|outerwear|footwear|accessory|traditional",
-  "subcategory": "specific type like kurti, jeans, saree, etc.",
+  "subcategory": "specific type e.g. kurti, saree, lehenga set, salwar suit, anarkali, kurta set, jeans, trousers, blouse, shirt, dupatta, etc.",
+  "style_origin": "indian|western|neutral",
+  "is_full_set": true/false (true for saree, lehenga set, salwar suit set, co-ord set, kurta set with dupatta — items that are worn as a complete outfit without mixing Western pieces),
   "colors": ["main colors in hex like #FF0000"],
-  "pattern": "solid|striped|floral|printed|embroidered|checks",
-  "fabric": "cotton|silk|linen|polyester|wool|chiffon|georgette|denim|other",
-  "occasions": ["casual","office","festive","wedding","party","temple","beach","date","sport"],
+  "pattern": "solid|striped|floral|printed|embroidered|checks|geometric|paisley",
+  "fabric": "cotton|silk|linen|polyester|wool|chiffon|georgette|denim|crepe|other",
+  "occasions": ["casual","office","festive","wedding","party","temple","beach","date","sport","brunch","dinner","formal"],
   "formality_score": 1-5 (1=very casual, 5=very formal),
   "season": ["summer","winter","monsoon","all-season"],
   "suggested_name": "short descriptive name for this item",
-  "style_notes": "brief fashion notes about the item"
-}`,
+  "style_notes": "brief fashion notes — for Indian wear note if it is a set, appropriate pairing, cultural context"
+}
+
+IMPORTANT RULES:
+- A kurta set (kurta + palazzo/pant), salwar suit, lehenga set, saree — all are style_origin: "indian"
+- A standalone kurta/kurti goes in category: "traditional" with style_origin: "indian"
+- A saree or lehenga set: is_full_set: true, category: "traditional"
+- Western jeans, shirts, dresses: style_origin: "western"
+- Dupatta: category: "accessory", style_origin: "indian"
+- Neutral items (plain white tee, black trousers): style_origin: "neutral"`,
               },
             ],
           },
@@ -160,6 +174,12 @@ async function analyzeWithClaude(imageUrl: string): Promise<TagResult | null> {
     return {
       category: parsed.category || "top",
       subcategory: parsed.subcategory || "",
+      style_origin: ["indian", "western", "neutral"].includes(
+        parsed.style_origin,
+      )
+        ? parsed.style_origin
+        : "western",
+      is_full_set: Boolean(parsed.is_full_set),
       colors: Array.isArray(parsed.colors) ? parsed.colors : [],
       pattern: parsed.pattern || "solid",
       fabric: parsed.fabric || "",
@@ -192,6 +212,7 @@ export async function POST(request: Request) {
         .insert({
           user_id: userId,
           image_url: imageUrl,
+          is_active: true,
           ...manualTags,
         })
         .select()
@@ -232,8 +253,11 @@ export async function POST(request: Request) {
       .insert({
         user_id: userId,
         image_url: imageUrl,
+        is_active: true,
         category: finalTags.category,
         subcategory: finalTags.subcategory,
+        style_origin: finalTags.style_origin,
+        is_full_set: finalTags.is_full_set,
         colors: finalTags.colors,
         pattern: finalTags.pattern,
         fabric: finalTags.fabric,
